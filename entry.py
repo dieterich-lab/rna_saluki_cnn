@@ -5,23 +5,16 @@ from pathlib import Path
 
 from transformers import (
     BertConfig,
-    BertForMaskedLM,
-    BertForSequenceClassification,
-    LongformerForMaskedLM,
-    LongformerForSequenceClassification,
+    DefaultDataCollator,
     PreTrainedTokenizerFast,
     Trainer,
-    XLNetConfig,
-    XLNetForSequenceClassification,
-    XLNetLMHeadModel,
-    XLNetTokenizerFast,
 )
 from transformers.image_processing_utils import BaseImageProcessor
 
-from models import HFSaluki, HFXLNetForSequenceClassification, HFXLNetLMHeadModel
-from params import parse_args
-from rna_datasets import RNACNNDataset, RNALanguageDataset
-from trainer import RegressionTrainer, WeightedRegressionTrainer
+from biolm_utils.params import parse_args
+from biolm_utils.trainer import RegressionTrainer, WeightedRegressionTrainer
+from models import HFSaluki
+from rna_cnn_dataset import RNACNNDataset
 
 # Get the arguments from the command line.
 args = parse_args()
@@ -39,10 +32,7 @@ OUTPUTPATH.mkdir(parents=True, exist_ok=True)
 
 MODELLOADPATH = None
 TOKENIZERFILE = OUTPUTPATH / "tokenizer.json"
-if args.mode == "fine-tune" and args.model == "xlnet":
-    MODELLOADPATH = OUTPUTPATH / "pre-train"
-elif args.mode == "interpret":
-    MODELLOADPATH = OUTPUTPATH / "fine-tune"
+MODELLOADPATH = OUTPUTPATH / "fine-tune"
 
 # `pretrainedmodel` changes either:
 # - different tokenizer when pre-training
@@ -87,7 +77,7 @@ else:
         logging.StreamHandler(),
     ]
 logging.basicConfig(
-    format=f"%(asctime)s ({args.mode} {OUTPUTPATH.stem} {args.model}) - %(message)s",
+    format=f"%(asctime)s ({args.mode} {OUTPUTPATH.stem}) - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     level=logging.INFO,
     handlers=handlers,
@@ -113,58 +103,30 @@ if args.resume == True:
 else:
     CHECKPOINTPATH = None
 
-REGRESSIONTRAINER = (
+REGRESSIONTRAINER_CLS = (
     WeightedRegressionTrainer if args.weightedregression else RegressionTrainer
 )
 
-MLMTRAINER = Trainer
+MLMTRAINER_CLS = Trainer
 
 # Collate models.
-MODELDICT = {
-    "pre-train": {
-        "bert": BertForMaskedLM,
-        "long": LongformerForMaskedLM,
-        "xlnet": HFXLNetLMHeadModel,
-        # "xlnet": XLNetLMHeadModel,
-    },
-    "fine-tune": {
-        "bert": BertForSequenceClassification,
-        "long": LongformerForSequenceClassification,
-        "xlnet": HFXLNetForSequenceClassification,
-        # "xlnet": XLNetForSequenceClassification,
-        "saluki": HFSaluki,
-    },
-}
-
+MODELCLS = HFSaluki
 # Collate tokenizers.
-TOKENIZERDICT = {
-    "saluki": PreTrainedTokenizerFast,
-    "xlnet": XLNetTokenizerFast,
-}
+TOKENIZER_CLS = PreTrainedTokenizerFast
 
-DATASETDICT = {
-    "xlnet": RNALanguageDataset,
-    "saluki": RNACNNDataset,
-}
+DATASET_CLS = RNACNNDataset
 
-LEARNINGRATE = (
-    args.learningrate
-    if args.learningrate
-    else 1e-03 if args.model == "saluki" else 5e-05
-)
+LEARNINGRATE = 1e-5
 
-MAX_GRAD_NORM = 0.5 if args.model == "saluki" else 1.0
-WEIGHT_DECAY = 0.001 if args.model == "saluki" else 0.0
+MAX_GRAD_NORM = 1.0
+WEIGHT_DECAY = 0.0
 
-if args.model == "saluki":
-    TOKENIZER_FOR_TRAINER = BaseImageProcessor()
-else:
-    TOKENIZER_FOR_TRAINER = None
+SPECIAL_TOKENIZER_FOR_TRAINER_CLS = BaseImageProcessor
+DATACOLLATOR_CLS_FOR_PRETRAINING = None
+DATACOLLATOR_CLS_FOR_FINETUNING = DefaultDataCollator
 
-# N_MOD_CLASSES = 1 if args.specifiersep else 0
+ADD_SPECIAL_TOKENS = False
 
-ADD_SPECIAL_TOKENS = args.model != "saluki"
+CONFIGCLS = BertConfig
 
-CONFIGCLS = BertConfig if args.model == "saluki" else XLNetConfig
-
-PRETRAINING_REQUIRED = args.model != "saluki"
+PRETRAINING_REQUIRED = False

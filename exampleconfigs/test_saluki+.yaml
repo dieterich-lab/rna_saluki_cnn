@@ -1,0 +1,88 @@
+#
+# Below is the outputpath where all (model) files are being saved
+#
+outputpath: experiments/test_saluki+  # If None, will be set to the file name (without extension)
+
+#
+# Description of the datasource used for 
+# - training the tokenizer 
+# - pre-training (for LM)
+#
+tokenizing and pre-training data source:
+  filepath: "test/rna+.txt"
+  stripheader: False # if the custom data file has a header that has to be stripped
+  columnsep: "\t" # could be "," "|", "\t" ...
+  tokensep: ","
+  specifiersep: "#"
+  idpos: 2 # position of the identifier of the column 
+  seqpos: 11 # position of the sequence column 
+  pretrainedmodel: None # if the tokenizer for pre-training diverts from the chosen data.
+
+#
+# Description of the fine-tuning source
+#
+fine-tuning data source:
+  filepath: "test/rna+.txt"
+  stripheader: False # if the custom data file has a header that has to be stripped
+  columnsep: "\t" # could be "," "|", "\t" ...
+  tokensep: ","
+  specifiersep: "#"
+  idpos: 2 # position of the identifier of the column 
+  seqpos: 11 # position of the sequence column 
+  labelpos: 8 # position of the label column 
+  weightpos: None # position of the column containing quality labels 
+  splitpos: 1 # position of the split identifier for cross validaton
+  pretrainedmodel: None # if the pre-trained model diverts from the chosen data.
+
+#
+# If you want to tokenize, you only need to specify the following.
+#
+tokenization:
+  samplesize: None # if your data is to big to learn a tokenizer, you can downsample it
+  vocabsize: 20_000
+  minfreq: 2
+  atomicreplacements: None
+  bpe:
+    maxtokenlength: 10
+  encoding: atomic # bpe, 3mer, 5mer (the planned encoding for you experiments)
+
+#
+# The following are detailed settings for the training/fine-tuning mode. 
+#
+model: saluki
+data pre-processing (RNA):
+  centertoken: False # either False or a token/character on which the sequence will be centered
+  nomarkers: False
+  _3utr: False
+  only512: False
+  non3utr: False
+  lefttailing: False
+environment:
+  ngpus: 1 #1, 2, 4
+  accelerator: gpu # gpu, cpu
+training:
+  general:
+    batchsize: 8
+    gradacc: 4
+    blocksize: 12288
+    nepochs: 5
+    patience: 50
+    resume: False
+  fine-tuning:
+    fromscratch: False # if we want to fine-tune without a pre-trained model
+    scaling: log # log, minmax, standard
+    weightedregression: False
+
+#
+# The following are detailed settings for the interpretation mode
+#
+looscores:
+  handletokens: replace
+
+#
+# Specific options for debugigng or dataset creation
+#
+debugging: 
+  silent: False # If set to True, verbose printing of the transformers library is disabled. Only results are printed.
+  dev: False # set to an integer if you want to run just on a fraction of the data to evaluate functionality of the scripts.
+  getdata: False # if you only want to save your tokenized dataset and then quit

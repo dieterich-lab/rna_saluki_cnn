@@ -1,0 +1,23 @@
+#
+# Below is the outputpath where all (model) files are being saved
+#
+outputpath: experiments/test_saluki  # If None, will be set to the file name (without extension)
+
+data source:
+  filepath: "test/salukistyle_regression.txt"
+  stripheader: False # if the custom data file has a header that has to be stripped
+  columnsep: "\t" # could be "," "|", "\t" ...
+  tokensep: ","
+  idpos: 2 # position of the identifier of the column 
+  seqpos: 11 # position of the sequence column 
+  labelpos: 8 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
+
+
+model: saluki # type of the model
+pretrainedmodel: /prj/RNA_NLP/RNALM/experiments/mus_cDNA_v102_salukiStyle_saluki/fine-tune/0 # path of the fine-tuned model to infer from
+
+#
+# Specific options for debugigng or dataset creation
+#
+debugging: 
+  silent: False # If set to True, verbose printing of the transformers library is disabled. Only results are printed.
