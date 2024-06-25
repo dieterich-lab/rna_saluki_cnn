@@ -1,9 +1,5 @@
 import torch.nn as nn
-from transformers import (
-    PreTrainedModel,
-    XLNetForSequenceClassification,
-    XLNetLMHeadModel,
-)
+from transformers import PreTrainedModel
 
 
 class MidBlock(nn.Module):

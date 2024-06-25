@@ -1,0 +1,14 @@
+[packages]
+transformers = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
+pandas = "*"
+ferret-xai = "*"
+accelerate = "*"
+biolm-utils = {file = ".", editable = true}
+
+[dev-packages]
+debugpy = "*"
+tensorboard = "*"
+torch-tb-profiler = "*"
