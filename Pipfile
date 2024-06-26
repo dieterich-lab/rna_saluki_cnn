@@ -1,12 +1,5 @@
 [packages]
-transformers = "*"
-torch = "*"
-torchvision = "*"
-torchaudio = "*"
-pandas = "*"
-ferret-xai = "*"
-accelerate = "*"
-biolm-utils = {file = ".", editable = true}
+biolm-utils = {file = "../biolm_utils", editable = true}
 
 [dev-packages]
 debugpy = "*"

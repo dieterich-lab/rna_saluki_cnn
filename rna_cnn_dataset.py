@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from sklearn.preprocessing import OneHotEncoder
 
 from biolm_utils.rna_datasets import RNABaseDataset
 
