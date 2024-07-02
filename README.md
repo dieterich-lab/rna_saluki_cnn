@@ -47,3 +47,13 @@ python saluki.py -h
 ```
 
 For general usage we refer user to the [README](https://github.com/dieterich-lab/biolm_utils/blob/main/README.md) of the `biolm_utils` framework.
+
+## Example config files
+
+We offer two types of config files. The first one is for the pipeline of **tokenization**, **pre-training** (language models only), **fine-tuning**, **testing** (testing is also done during fine-tuning, but can be also again separately invoked) and extracting loo scores. The other one is for **inference** (getting predictions on new files) and **interpret** modes. The latter one are noticeably smaller as all the training cofigurations fall away.
+
+```bash
+exampleconfigs
+├── inference_interpret.yaml
+├── tokenize_pe-train_fine_tune_test_interpret.yaml
+```
