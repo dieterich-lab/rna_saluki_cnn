@@ -1,5 +1,5 @@
 [packages]
-biolm-utils = {file = "../biolm_utils", editable = true}
+biolm-tuils = {git = "ssh://git@github.com/dieterich-lab/biolm_utils.git", editable= true}
 
 [dev-packages]
 debugpy = "*"
