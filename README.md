@@ -27,8 +27,8 @@ pipenv install
 ├── exampleconfigs # exampleconfigs to work with
 ├── Pipfile # installation file
 ├── README.md
-├── rna_saluki.py # Implementation of the `RNABaseDataset`, espcially implementing the `__getitem__()` method.
-├── rna_saluki.py # Implementation of the models, espcially implementing the `getconfig()` method.
+├── rna_cnn_dataset.py # Implementation of the `RNABaseDataset`, espcially implementing the `__getitem__()` method.
+├── rna_cnn_models.py # Implementation of the models, espcially implementing the `getconfig()` method.
 ├── saluki.py # Main script importing the `run()` function from `biolm_utils` and declaration of the model/data/training configuration.
 ```
 
