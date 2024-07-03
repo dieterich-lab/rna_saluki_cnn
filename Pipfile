@@ -1,0 +1,7 @@
+[packages]
+biolm-tuils = {git = "ssh://git@github.com/dieterich-lab/biolm_utils.git", editable= true}
+
+[dev-packages]
+debugpy = "*"
+tensorboard = "*"
+torch-tb-profiler = "*"
