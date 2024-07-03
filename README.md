@@ -34,16 +34,16 @@ pipenv install
 
 ## Usage
 
-The main script is [xlnet.py](./xlnet.py) which imports the `run()` function from the [biolm._utils](https://github.com/dieterich-lab/biolm_utils) library and provides the a custom `Config` object suitable for running the XLNet model. The script can be run via
+The main script is [saluki.py](./saluki.py) which imports the `run()` function from the [biolm._utils](https://github.com/dieterich-lab/biolm_utils) library and provides the a custom `Config` object suitable for running the saluki model. The script can be run via
 
 ```bash
-python xlnet.py [tokenize | pre-train | fine-tune | predict | interepret]
+python saluki.py [tokenize | pre-train | fine-tune | predict | interepret]
 ```
 
 To get a verbose exlplanation on all the possible parameters you can run the following:
 
 ```bash
-python xlnet.py -h 
+python saluki.py -h 
 ```
 
 For general usage and information about the configuration parameters we refer user to the [README](https://github.com/dieterich-lab/biolm_utils/blob/main/README.md) of the `biolm_utils` framework.
