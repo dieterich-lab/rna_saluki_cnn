@@ -1,0 +1,82 @@
+#
+# Below is the outputpath where all (model) files are being saved
+#
+outputpath: "test_folder"  # If None, will be set to the file name (without extension)
+
+#
+# Description of the datasource used for 
+# - training the tokenizer 
+# - pre-training (for LM)
+#
+tokenizing and pre-training data source:
+  filepath: "tokenizing_and_pre-training_data_file.txt"
+  stripheader: False # if the custom data file has a header that has to be stripped
+  columnsep: "\t" # could be "," "|", "\t" ...
+  tokensep: ","
+  specifiersep: None
+  idpos: 1 # position of the identifier of the column 
+  seqpos: 1 # position of the sequence column 
+  pretrainedmodel: None # if the tokenizer for pre-training diverts from the chosen data.
+
+#
+# Description of the fine-tuning source
+#
+fine-tuning data source:
+  filepath: "fine-tuning_data_file.txt"
+  stripheader: False # if the custom data file has a header that has to be stripped
+  columnsep: "\t" # could be "," "|", "\t" ...
+  tokensep: ","
+  specifiersep: None
+  idpos: 1 # position of the identifier of the column 
+  seqpos: 1 # position of the sequence column 
+  labelpos: 1 # position of the label column 
+  weightpos: None # position of the column containing quality labels 
+  splitpos: 1 # position of the split identifier for cross validaton
+  pretrainedmodel: None # if the pre-trained model diverts from the chosen data.
+
+#
+# If you want to tokenize, you only need to specify the following.
+#
+tokenization:
+  samplesize: None # if your data is to big to learn a tokenizer, you can downsample it
+  vocabsize: 20_000
+  minfreq: 2
+  atomicreplacements: None # dictionary of replacements, i.e. `{"a": "A", "bcd": "xyz"}
+  bpe:
+    maxtokenlength: 10
+  encoding: atomic # [bpe, atomic]
+
+#
+# The following are detailed settings for the training/fine-tuning mode. 
+#
+settings:
+  data pre-processing (RNA):
+    centertoken: False # either False or a token/character on which the sequence will be centered
+  environment:
+    ngpus: 1 # [1, 2, 4]
+  training:
+    general:
+      batchsize: 8
+      gradacc: 4
+      blocksize: 512
+      nepochs: 10
+      patience: 3
+      resume: False # for resuming training
+    fine-tuning:
+      fromscratch: False # if we want to fine-tune without a pre-trained model (language models only)
+      scaling: log # [log, minmax, standard]
+      weightedregression: False
+
+#
+# The following are detailed settings for the interpretation mode
+#
+looscores:
+  handletokens: remove # [remove, mask]
+
+#
+# Specific options for debugigng or dataset creation
+#
+debugging: 
+  silent: False # If set to True, verbose printing of the transformers library is disabled. Only results are printed.
+  dev: False # set to an integer if you want to run just on a fraction of the data to evaluate functionality of the scripts.
+  getdata: False # if you only want to save your tokenized dataset and then quit
