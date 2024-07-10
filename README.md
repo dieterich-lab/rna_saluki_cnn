@@ -13,10 +13,10 @@ In detail, the following steps are implemented:
 First clone the repo and cd into it. Then, we recommend to create a dedicated environment ([python venv](https://docs.python.org/3/library/venv.html)) for the project. Now, you install the project via the [Pipfile](./Pipfile) file which in turn will install the [biolm_utils](https://github.com/dieterich-lab/biolm_utils) library. Summarising, excute the following steps:
 
 ```bash
-git clone https://github.com/dieterich-lab/rna_protein_saluki.git
-cd rna_protein_saluki
-python3 -m venv biolm_saluki 
-. biolm/biolm_saluki/activate
+git clone https://github.com/dieterich-lab/rna_saluki_cnn.git
+cd rna_saluki_cnn
+python3 -m venv biolm_saluki  # or any other choice of directory
+. biolm/bin/activate
 pip install pipenv
 pipenv install
 ```

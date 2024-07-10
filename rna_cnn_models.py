@@ -147,11 +147,14 @@ class HFSaluki(PreTrainedModel):
     def __init__(self, config):
         # def __init__(self, config, input_size):
         super().__init__(config)
-        self.model = Saluki(input_size=config.input_size)
+        self.model = Saluki(input_size=config.input_size, num_labels=config.num_labels)
+        # self.model = Saluki(input_size=config.input_size)
 
-    def forward(self, **kwargs):
-        x = kwargs["input_ids"]
-        x = self.model(x)
+    def forward(self, input_ids, **kwargs):
+        # def forward(self, **kwargs):
+        # x = kwargs["input_ids"]
+        # x = self.model(x)
+        x = self.model(input_ids)
         return {"logits": x}
 
     @staticmethod
@@ -162,4 +165,5 @@ class HFSaluki(PreTrainedModel):
             pad_token_id=tokenizer.pad_token_id,
         )
         config.input_size = dataset.OHE.categories_[0].size + dataset.nspecs
+        config.num_labels = nlabels
         return config
