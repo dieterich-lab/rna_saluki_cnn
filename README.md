@@ -1,6 +1,6 @@
 # `rna_protein_saluki`: A plugin to run bioinformatical CNN-RNN Models.
 
-This projects implements fine-tuning of the [Saluki](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02811-x) for regressing half lives of RNA and protein sequences. In addition, it supports the extraction of leave-one-out (LOO) scores for fine-tuned models to analyse importance scores of individual inputs.
+This projects implements fine-tuning of the [Saluki](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02811-x) model for regressing half lives of RNA and protein sequences. In addition, it supports the extraction of leave-one-out (LOO) scores for fine-tuned models to analyse importance scores of individual inputs.
 
 In detail, the following steps are implemented:
 
@@ -15,8 +15,8 @@ First clone the repo and cd into it. Then, we recommend to create a dedicated en
 ```bash
 git clone https://github.com/dieterich-lab/rna_saluki_cnn.git
 cd rna_saluki_cnn
-python3 -m venv biolm_saluki  # or any other choice of directory
-. biolm/bin/activate
+python3 -m venv ~/.venvs/biolm_saluki  # or any other choice of directory
+. ~/.venvs/biolm_saluki/bin/activate # or your choice of directory
 pip install pipenv
 pipenv install
 ```
@@ -27,7 +27,6 @@ pipenv install
 ├── exampleconfigs # exampleconfigs to work with
 ├── Pipfile # installation file
 ├── README.md
-├── rna_cnn_dataset.py # Implementation of the `RNABaseDataset`, espcially implementing the `__getitem__()` method.
 ├── rna_cnn_models.py # Implementation of the models, espcially implementing the `getconfig()` method.
 ├── saluki.py # Main script importing the `run()` function from `biolm_utils` and declaration of the model/data/training configuration.
 ```
