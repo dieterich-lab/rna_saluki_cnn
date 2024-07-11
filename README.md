@@ -36,7 +36,7 @@ pipenv install
 The main script is [saluki.py](./saluki.py) which imports the `run()` function from the [biolm._utils](https://github.com/dieterich-lab/biolm_utils) library and provides the a custom `Config` object suitable for running the saluki model. The script can be run via
 
 ```bash
-python saluki.py [tokenize | pre-train | fine-tune | predict | interepret]
+python saluki.py [tokenize | fine-tune | predict | interepret]
 ```
 
 To get a verbose exlplanation on all the possible parameters you can run the following:
@@ -54,5 +54,5 @@ We offer two types of config files. The first one is for the pipeline of **token
 ```bash
 exampleconfigs
 ├── inference_interpret.yaml
-├── tokenize_pe-train_fine_tune_test_interpret.yaml
+├── tokenize_fine_tune_test_interpret.yaml
 ```

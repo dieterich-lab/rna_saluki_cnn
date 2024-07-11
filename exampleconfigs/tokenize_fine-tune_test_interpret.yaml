@@ -9,7 +9,7 @@ outputpath: "test_folder"  # If None, will be set to the file name (without exte
 # - pre-training (for LM)
 #
 tokenizing and pre-training data source:
-  filepath: "tokenizing_and_pre-training_data_file.txt"
+  filepath: "tokenizing_data_file.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
   tokensep: ","
@@ -32,19 +32,13 @@ fine-tuning data source:
   labelpos: 1 # position of the label column 
   weightpos: None # position of the column containing quality labels 
   splitpos: 1 # position of the split identifier for cross validaton
-  pretrainedmodel: None # if the pre-trained model diverts from the chosen data.
 
 #
 # If you want to tokenize, you only need to specify the following.
 #
 tokenization:
   samplesize: None # if your data is to big to learn a tokenizer, you can downsample it
-  vocabsize: 20_000
-  minfreq: 2
-  atomicreplacements: None # dictionary of replacements, i.e. `{"a": "A", "bcd": "xyz"}
-  bpe:
-    maxtokenlength: 10
-  encoding: atomic # [bpe, atomic]
+  encoding: atomic # this is fixed for Saluki as it uses character-encoding for CNN inputs
 
 #
 # The following are detailed settings for the training/fine-tuning mode. 
