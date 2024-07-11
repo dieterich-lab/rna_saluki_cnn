@@ -38,19 +38,18 @@ The main script is [saluki.py](./saluki.py) which imports the `run()` function f
 ```bash
 python saluki.py [tokenize | fine-tune | predict | interepret]
 ```
-### E.g. Tokenization
+
+E.g. `tokenization`:
 
 ```bash
 python saluki.py tokenize  --configfile exampleconfigs/tokenize_fine-tune_test_interpret.yaml
 ```
 
-### E.g. Fine-tuning
+E.g. `fine-tuning`:
 
 ```bash
 python saluki.py fine-tune  --configfile exampleconfigs/tokenize_fine-tune_test_interpret.yaml
 ```
-
-### Tokenization
 
 To get a verbose exlplanation on all the possible parameters you can run the following:
 
@@ -58,7 +57,7 @@ To get a verbose exlplanation on all the possible parameters you can run the fol
 python saluki.py -h 
 ```
 
-For general usage and information about the configuration parameters we refer user to the [README](https://github.com/dieterich-lab/biolm_utils/blob/main/README.md) of the `biolm_utils` framework.
+For specific usage and information about the configuration parameters we refer user to the [README](https://github.com/dieterich-lab/biolm_utils/blob/main/README.md) of the `biolm_utils` framework.
 
 ## Example config files
 
