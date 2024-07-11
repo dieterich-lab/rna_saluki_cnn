@@ -38,7 +38,7 @@ fine-tuning data source:
 #
 tokenization:
   samplesize: None # if your data is to big to learn a tokenizer, you can downsample it
-  encoding: atomic # this is fixed for Saluki as it uses character-encoding for CNN inputs
+  encoding: atomic # this is fixed for Saluki
 
 #
 # The following are detailed settings for the training/fine-tuning mode. 

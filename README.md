@@ -38,6 +38,19 @@ The main script is [saluki.py](./saluki.py) which imports the `run()` function f
 ```bash
 python saluki.py [tokenize | fine-tune | predict | interepret]
 ```
+### E.g. Tokenization
+
+```bash
+python saluki.py tokenize  --configfile exampleconfigs/tokenize_fine-tune_test_interpret.yaml
+```
+
+### E.g. Fine-tuning
+
+```bash
+python saluki.py fine-tune  --configfile exampleconfigs/tokenize_fine-tune_test_interpret.yaml
+```
+
+### Tokenization
 
 To get a verbose exlplanation on all the possible parameters you can run the following:
 
