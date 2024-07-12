@@ -6,19 +6,18 @@ from transformers.image_processing_utils import BaseImageProcessor
 from rna_cnn_models import HFSaluki
 
 params = [
-    None,  # 0
-    HFSaluki,  # 1
-    PreTrainedTokenizerFast,  # 2
-    # RNACNNDataset,  # 3
-    1e-3,  # 4
-    0.4,  # 5
-    0.001,  # 6
-    BaseImageProcessor,  # 7
-    None,  # 8
-    DefaultDataCollator,  # 9
-    False,  # 10
-    BertConfig,  # 11
-    False,  # 12
+    None,
+    HFSaluki,
+    PreTrainedTokenizerFast,
+    1e-3,
+    0.4,
+    0.001,
+    BaseImageProcessor,
+    None,
+    DefaultDataCollator,
+    False,
+    BertConfig,
+    False,
 ]
 
 config = Config(*params)

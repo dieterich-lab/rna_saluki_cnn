@@ -37,29 +37,27 @@ fine-tuning data source:
 # If you want to tokenize, you only need to specify the following.
 #
 tokenization:
-  samplesize: None # if your data is to big to learn a tokenizer, you can downsample it
-  encoding: atomic # this is fixed for Saluki
+  samplesize: None # if your data file is to big to learn a tokenizer, you can downsample it
+  encoding: atomic # DO NOT CHANGE. This is the default encoding of one-hot-encodings for CNN inputs.
 
 #
 # The following are detailed settings for the training/fine-tuning mode. 
 #
 settings:
-  data pre-processing (RNA):
-    centertoken: False # either False or a token/character on which the sequence will be centered
+  data pre-processing:
+    centertoken: False # either False or a character on which the sequence will be centered
   environment:
-    ngpus: 1 # [1, 2, 4]
+    ngpus: 1 # [1, 2, 4] # TODO: automatically infer this from the environment
   training:
     general:
       batchsize: 8
-      gradacc: 4
-      blocksize: 512
+      gradacc: 4 # Gradient accumulation (effective gradients will be batchsize x gradacc)
+      blocksize: 12888 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
       nepochs: 10
       patience: 3
       resume: False # for resuming training
-    fine-tuning:
-      fromscratch: False # if we want to fine-tune without a pre-trained model (language models only)
-      scaling: log # [log, minmax, standard]
-      weightedregression: False
+      scaling: log # label scaling [log, minmax, standard]
+      weightedregression: False # under development
 
 #
 # The following are detailed settings for the interpretation mode
