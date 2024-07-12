@@ -126,7 +126,7 @@ T | 0  | 0 | 0 | 0 |
 
 ### 2) Tokenization
 
-The term "tokenization" originates form language modelling terminolgy and originally referes to splitting a contiguous sequence into subparts (tokens). For this project we will split the sequences into individual atomic characters which (see the example under [data configuration](#1-data-configuration)). The whole process maps characters to one-hot-encodings (and optionally modificaton channels)
+The term "tokenization" originates form language modelling terminolgy and originally referes to splitting a contiguous sequence into subparts (tokens) and "learning a tokenizer" usually involves some statistical processes like byte pair encoding. But for this project we will simply split the sequences into individual atomic characters (see the example under [data configuration](#1-data-configuration)). These characters are then mapped to one-hot-encodings (and optionally modificaton channels).
 
 To train a tokenizer, you'll beusing the `tokenize` mode:
 
@@ -135,7 +135,7 @@ python saluki.py tokenize --configfile exampleconfigs/tokenize_fine-tune_test_in
 ```
 There are no real parameters to change in the configfile. The only valid option is to downsample your file for "learning" a tokenizer if it is huge, albeit this option is rather important for other realisations of the `biolm_utils` framework.
 
-> **Attention**: Do not change the `eencoding` as this is the default encoding of one-hot-encodings for CNN inputs.
+> **Attention**: Do not change the `encoding` as this is the default encoding of one-hot-encodings for CNN inputs.
 
 ```bash
 #
