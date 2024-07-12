@@ -3,5 +3,4 @@ biolm-utils = {git = "ssh://git@github.com/dieterich-lab/biolm_utils.git", edita
 
 [dev-packages]
 debugpy = "*"
-tensorboard = "*"
 torch-tb-profiler = "*"

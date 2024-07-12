@@ -57,7 +57,7 @@ To get a verbose exlplanation on all the possible parameters you can run the fol
 python saluki.py -h 
 ```
 
-For specific usage and information about the configuration parameters we refer user to the [README](https://github.com/dieterich-lab/biolm_utils/blob/main/README.md) of the `biolm_utils` framework.
+For specific usage and information about the configuration parameters we refer the user to the [README](https://github.com/dieterich-lab/biolm_utils/blob/main/README.md) of the `biolm_utils` framework.
 
 ## Example config files
 
