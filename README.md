@@ -91,7 +91,7 @@ fine-tuning data source:
   idpos: 1 # position of the identifier of the column 
   seqpos: 1 # position of the sequence column 
   labelpos: 1 # position of the label column 
-  weightpos: None # position of the column containing quality labels 
+  weightpos: None # position of the column containing quality labels with allowed labels: ["STRONG", "GOOD", "WEAK", "POOR"]
   splitpos: 1 # position of the split identifier for cross validaton
   pretrainedmodel: None # if the pre-trained model diverts from the chosen data.
   ```
