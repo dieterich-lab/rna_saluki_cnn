@@ -11,12 +11,11 @@ outputpath: "test_folder"  # If None, will be set to the file name (without exte
 tokenizing and pre-training data source:
   filepath: "tokenizing_data_file.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
-  columnsep: "\t" # could be "," "|", "\t" ...
+  columnsep: "\t" # could be ",", "|", "\t", ... Denominates the separator token of your file.
   tokensep: ","
   specifiersep: None
   idpos: 1 # position of the identifier of the column 
   seqpos: 1 # position of the sequence column 
-  pretrainedmodel: None # if the tokenizer for pre-training diverts from the chosen data.
 
 #
 # Description of the fine-tuning source
@@ -63,7 +62,7 @@ settings:
 # The following are detailed settings for the interpretation mode
 #
 looscores:
-  handletokens: remove # [remove, mask]
+  handletokens: remove # One of [remove, mask]. This determines how to treat the absence of a token during leave-one-out calculation.
 
 #
 # Specific options for debugigng or dataset creation
