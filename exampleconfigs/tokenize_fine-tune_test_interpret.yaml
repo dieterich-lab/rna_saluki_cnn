@@ -50,7 +50,7 @@ settings:
   training:
     batchsize: 8
     gradacc: 4 # Gradient accumulation (effective gradients will be batchsize x gradacc)
-    blocksize: 12888 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
+    blocksize: 12288 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
     nepochs: 100
     patience: 10
     resume: False # for resuming training
