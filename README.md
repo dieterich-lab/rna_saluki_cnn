@@ -76,6 +76,8 @@ The software will save all experiment data in the [`outputpath`](#0-designate-an
 
 ## Example workflow
 
+This tutorial will lead you through an end-to-end process of training a tokenizer and fine-tuning a model. When you have questions about the arguments used here, you can read in detail about them in the [command line options](#command-line-options) section of this README.
+
 ### 0) Designate an Outputpath
 
 First off and simple, you can provide a path where to save your experiments (see [Pathing and Results](#pathing-and-results)):
@@ -208,4 +210,74 @@ settings:
       resume: False # When a training was cancelled (resuming) or further fine-tuning (see the general documentation of biolm_utils for further details.
       scaling: log # label scaling [log, minmax, standard]
       weightedregression: False # if you have quality labels for your data, then you can do weighted regression. Please fill out "weightpos" under "fine-tuning data source".
+```
+
+#### Command Line Options
+
+Concluding the [workflow tutorial](#example-workflow), we here list all the command line options together with their detailed explanation stemming from the [biolm_utils command line parser](https://github.com/dieterich-lab/biolm_utils/blob/main/biolm_utils/params.py).
+
+```
+  --filepath FILEPATH   The path the data file.
+  --outputpath OUTPUTPATH
+                        Path where to store the outputs for an experiment series. Will revert to `filepath` if not given.
+  --stripheader         If the file has a header, turn on this option to discard it.
+  --columnsep COLUMNSEP
+                        Separating character for the the different columns in the file
+  --tokensep TOKENSEP   Separator for atomic tokens in your sequence.
+  --specifiersep SPECIFIERSEP
+                        Atomic encoding only. If inputs are further specified with a float number, this is the separator that it should be separated by, e.g. '...,a#2.5,...' if 'a" is further specified by '2.5'.
+  --seqpos SEQPOS       Field position of the sequence in the data file (for 'our' datasets, this will be fixed in `entry.py`).
+  --idpos IDPOS         Field position of the sequence in the data file (for 'our' datasets, this will be fixed in `entry.py`).
+  --splitpos SPLITPOS   The field position of the split identifier of the split. or 'None' if no cross validation is desired.
+  --labelpos LABELPOS   Field position of the label in the data file (for 'our' datasets, this will be fixed in `entry.py`).
+  --weightpos WEIGHTPOS
+                        Field position of the regression weights in the data file.
+  --pretrainedmodel PRETRAINEDMODEL
+                        If not set, the tokenizer/pre-trained model will be inferred from the outputpath. When pre-traning MLM this refers to using the tokenizer of differenly named run. When fine-tuning, this refers to using a pre-trained model from a differenly named run. Otherwise the
+                        pretrainedmodel is derived according to the `filepath`/`outputpath`.
+  --encoding [{bpe,3mer,5mer,atomic}]
+                        Defines how to tokenize an input string. `bpe` is Byte Pair Encoding. `3mer` and `5mer` correspont to non overlapping 3-/5-grams. `atomic equals character-level tokenization.
+  --samplesize SAMPLESIZE
+                        If your sample data is to big, you can downsample it
+  --vocabsize VOCABSIZE
+                        Determines the final vocabulary size while during byte pair encoding
+  --minfreq MINFREQ     Determines the minimal frequency of a token to be included in the BPE vocabulary.
+  --maxtokenlength MAXTOKENLENGTH
+                        Determines how long a token may be at max in the final BPE vocab.
+  --atomicreplacements ATOMICREPLACEMENTS
+                        A dictionary-like string that contains the replacements of multi character tokens to atomic characters of the BPE-alphabet, i.e. `{'-CDSstop': 's'}`.
+  --centertoken CENTERTOKEN
+                        If the input string extends the 512 token length, it is centered around the given token.
+  --nomarkers           Option to remove `CDS_end`/`-CDSstop-` and `-EJ-` from the input sequence.
+  --_3utr               Trains only on the subsequence after `-CDS_end-`-token.
+  --non3utr             Trains only on the subsequence until `CDS_end`-token.
+  --only512             Filters out sequences that > 512 tokens.
+  --lefttailing         Truncation is done from the left side of the tokenized input sequence.
+  --ngpus {1,2,4}       Number of GPUs that is being trained on (only even numbers allowed).
+  --accelerator {gpu,cpu}
+                        Option to train on GPU or CPU.
+  --batchsize BATCHSIZE
+                        This batch size will be multiplied by 4 with gradient accumulation. If you don't want this, change `gradacc` to the desired value. Also, we prohibit batch sizes <2 and advise the user to batch sizes >8 as batch normalization will suffer elsewise.
+  --learningrate LEARNINGRATE
+                        Denote a specific learning rate
+  --gradacc GRADACC     The number of batches to be aggregated before calculating gradients. With a `batchsize` of 16, the effective batch size will 64. Default is set to `4` and shoould not be lowered as we account for GPU parallelization with it. This guarantees that we will always have the same
+                        effective batch size.
+  --blocksize BLOCKSIZE
+                        Maximal input sequence length of the model.
+  --nepochs NEPOCHS
+  --patience [PATIENCE]
+                        Number of epochs without improvement on the development set before training stops.
+  --resume [RESUME]     This parameter is overloaded with two options: 1) `--resume` (without parameters) triggers the huggingface internal `resume_from_checkpoint` option which will only _continue_ a training that has been interrupted. For example, a planned training that was to run for 50 epochs
+                        and was interrupted at epoch 23 can be resumed from the best checkpoint to be run from epoch 23 to planned epoch 50. 2) `--resume X` will trigger further pre-training a model from its best checkpoint for additional `X` epochs.
+  --fromscratch         Finetunes a regression model on a given task with freshly initialized parameters.
+  --scaling {log,minmax,stanard}
+  --weightedregression  Uses quality labels as weights for the loss function.
+  --handletokens {remove,mask,replace}
+                        How to handle 'missing' tokens during interpretability calculations.
+  --silent              If set to True, verbose printing of the transformers library is disabled. Only results are printed.
+  --dev [DEV]           A flag to speed up processes for debugging by sampling down training data to the given amount of samples and using this data also for validation steps.
+  --getdata             Only tokenize and save the data to file, then quit.
+  --saveastensors       Some datasets are small enough that we can save them as tensors objects instead of plain tokenized ids.
+  --configfile CONFIGFILE
+                        Path to the a config file that will overrule CLI arguments.
 ```
