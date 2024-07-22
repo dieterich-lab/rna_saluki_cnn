@@ -202,7 +202,7 @@ settings:
     general:
       batchsize: 8 # This is the batch size. (effective gradients will be batchsize x gradacc, see below)
       gradacc: 4 # Gradient accumulation: Determines how many batches of gradients should be aggregated (effective gradients will be batchsize x gradacc)
-      blocksize: 12888 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
+      blocksize: 12288 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
       nepochs: 10 # Number of epochs the model iterates over the training dataset.
       patience: 3 # Number of evaluation (once per epoch) that are carried out without improvements of the model on the evaluation set before training is stopped.
       resume: False # When a training was cancelled (resuming) or further fine-tuning (see the general documentation of biolm_utils for further details.
