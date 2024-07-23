@@ -59,19 +59,36 @@ exampleconfigs
 
 ## Pathing and Results
 
-The software will save all experiment data in the [`outputpath`](#0-designate-an-outputpath) (or fall back to the file path stem of the input file if not given). This directory will be created if not existant. There, we will save the dataset (tokenized samples from the given filepath), the tokenizer and the models. I.e. considering we use cross valdiation via splits and after having pre-trained (language models only) and fine-tuned a model, the directory will look as follows:
+The software will save all experiment data in the [`outputpath`](#0-designate-an-outputpath) (or fall back to the file path stem of the input file if not given). This directory will be created if not existant. There, we will save the dataset (tokenized samples from the given filepath), the tokenizer and the models. I.e. assuming we use cross valdiation via 3 splits and having fine-tuned a model, the directory will look as follows (commented are only files concerning your results):
 
 ```bash
-├── my_experiment
-│   ├── fine-tune
-│   │   ├── 0
-│   │   │   └── pytorch_model.bin
-│   │   ├── 1
-│   │   │   └── pytorch_model.bin
-│   │   ├── 2
-│   │   │   └── pytorch_model.bin
-│   │   └── dataset.json
-│   └── tokenizer.json
+├── fine-tune
+│   ├── 0
+│   │   ├── all_results.json # combined results for training, evalution & test
+│   │   ├── checkpoint-xxx 
+│   │   ├── config.json
+│   │   ├── eval_results.json # evaluation results
+│   │   ├── preprocessor_config.json
+│   │   ├── pytorch_model.bin
+│   │   ├── rank_deltas.csv # a file showing the rank deltas (i.e. for calculating spearman correlation) for the test data
+│   │   ├── special_tokens_map.json 
+│   │   ├── test_predictions.csv # the predictions of the model on the test set
+│   │   ├── test_results.json # test results 
+│   │   ├── tokenizer_config.json
+│   │   ├── tokenizer.json
+│   │   ├── trainer_state.json
+│   │   ├── training_args.bin
+│   │   └── train_results.json # training loss
+│   ├── 1
+│   │   ├── ... # same as in "0"
+│   ├── 2
+│   │   ├── ... # same as in "0"
+│   └── tboard
+│       ├── events.out.tfevents.x.gpu.x # tensorboard runs, showing loss, learning rate and so on
+├── tokenize
+│   └── logs
+│       ├── YY-MM-hh:mm.log # the log files of the your run (or multiple runs)
+└── tokenizer.json
 ```
 
 ## Example workflow
@@ -232,28 +249,13 @@ Concluding the [workflow tutorial](#example-workflow), we here list all the comm
   --labelpos LABELPOS   Field position of the label in the data file (for 'our' datasets, this will be fixed in `entry.py`).
   --weightpos WEIGHTPOS
                         Field position of the regression weights in the data file.
-  --pretrainedmodel PRETRAINEDMODEL
-                        If not set, the tokenizer/pre-trained model will be inferred from the outputpath. When pre-traning MLM this refers to using the tokenizer of differenly named run. When fine-tuning, this refers to using a pre-trained model from a differenly named run. Otherwise the
-                        pretrainedmodel is derived according to the `filepath`/`outputpath`.
-  --encoding [{bpe,3mer,5mer,atomic}]
-                        Defines how to tokenize an input string. `bpe` is Byte Pair Encoding. `3mer` and `5mer` correspont to non overlapping 3-/5-grams. `atomic equals character-level tokenization.
   --samplesize SAMPLESIZE
                         If your sample data is to big, you can downsample it
-  --vocabsize VOCABSIZE
-                        Determines the final vocabulary size while during byte pair encoding
-  --minfreq MINFREQ     Determines the minimal frequency of a token to be included in the BPE vocabulary.
-  --maxtokenlength MAXTOKENLENGTH
-                        Determines how long a token may be at max in the final BPE vocab.
   --atomicreplacements ATOMICREPLACEMENTS
                         A dictionary-like string that contains the replacements of multi character tokens to atomic characters of the BPE-alphabet, i.e. `{'-CDSstop': 's'}`.
   --centertoken CENTERTOKEN
                         If the input string extends the 512 token length, it is centered around the given token.
-  --nomarkers           Option to remove `CDS_end`/`-CDSstop-` and `-EJ-` from the input sequence.
-  --_3utr               Trains only on the subsequence after `-CDS_end-`-token.
-  --non3utr             Trains only on the subsequence until `CDS_end`-token.
-  --only512             Filters out sequences that > 512 tokens.
-  --lefttailing         Truncation is done from the left side of the tokenized input sequence.
-  --ngpus {1,2,4}       Number of GPUs that is being trained on (only even numbers allowed).
+  --ngpus {1,2,4}       Number of GPUs that is being trained on (only even numbers up to 4 are allowed).
   --accelerator {gpu,cpu}
                         Option to train on GPU or CPU.
   --batchsize BATCHSIZE
@@ -262,8 +264,6 @@ Concluding the [workflow tutorial](#example-workflow), we here list all the comm
                         Denote a specific learning rate
   --gradacc GRADACC     The number of batches to be aggregated before calculating gradients. With a `batchsize` of 16, the effective batch size will 64. Default is set to `4` and shoould not be lowered as we account for GPU parallelization with it. This guarantees that we will always have the same
                         effective batch size.
-  --blocksize BLOCKSIZE
-                        Maximal input sequence length of the model.
   --nepochs NEPOCHS
   --patience [PATIENCE]
                         Number of epochs without improvement on the development set before training stops.
@@ -277,7 +277,6 @@ Concluding the [workflow tutorial](#example-workflow), we here list all the comm
   --silent              If set to True, verbose printing of the transformers library is disabled. Only results are printed.
   --dev [DEV]           A flag to speed up processes for debugging by sampling down training data to the given amount of samples and using this data also for validation steps.
   --getdata             Only tokenize and save the data to file, then quit.
-  --saveastensors       Some datasets are small enough that we can save them as tensors objects instead of plain tokenized ids.
   --configfile CONFIGFILE
                         Path to the a config file that will overrule CLI arguments.
 ```
