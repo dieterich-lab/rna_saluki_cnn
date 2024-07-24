@@ -4,17 +4,17 @@
 outputpath: "test_folder"  # If None, will be set to the file name (without extension)
 
 data source:
-  filepath: "tokenizing_and_pre-training_data_file.txt"
+  filepath: "data_to_be_predicted.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
   tokensep: ","
   specifiersep: None
   idpos: 1 # position of the identifier of the column 
-  seqpos: 1 # position of the sequence column 
-  labelpos: 8 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
+  seqpos: 2 # position of the sequence column 
+  labelpos: 3 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
 
 
-inference data source:
+inference model:
   pretrainedmodel: "path/to/fine-tuned-model" # path of the fine-tuned model to infer from
 
 #

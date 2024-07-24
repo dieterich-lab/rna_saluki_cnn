@@ -36,7 +36,7 @@ pipenv install
 The main script is [saluki.py](./saluki.py) which imports the `run()` function from the [biolm._utils](https://github.com/dieterich-lab/biolm_utils) library and provides the a custom `Config` object suitable for running the saluki model. The script can be run via
 
 ```bash
-python saluki.py [tokenize | fine-tune | predict | interepret]
+python saluki.py [tokenize | fine-tune | predict | interpret]
 ```
 
 To get a verbose exlplanation on all the possible parameters you can run the following:
@@ -92,6 +92,7 @@ The software will save all experiment data in the [`outputpath`](#0-designate-an
 ```
 
 ## Example workflow
+
 
 This tutorial will lead you through an end-to-end process of training a tokenizer and fine-tuning a model. When you have questions about the arguments used here, you can read in detail about them in the [command line options](#command-line-options) section of this README.
 
@@ -227,6 +228,34 @@ settings:
       resume: False # When a training was cancelled (resuming) or further fine-tuning (see the general documentation of biolm_utils for further details.
       scaling: log # label scaling [log, minmax, standard]
       weightedregression: False # if you have quality labels for your data, then you can do weighted regression. Please fill out "weightpos" under "fine-tuning data source".
+```
+
+### 4) Inference (predicting)
+
+Now that you've trained a model (new models) you probably want to make predictions on new data. To do so, you can use `predict` mode: 
+
+```bash
+python saluki.py predict --configfile exampleconfigs/predict.yaml
+```
+
+As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict.yaml) for this purpose. It's now all about declaring the structure of the new data source, the trained model to infer from and where to save the results. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` ans so on, see [Pathing and Results](#pathing-and-results)).
+
+```yaml
+outputpath: "experiments/test_saluki/predict"  # Path where to store the predictions. Will revert to folder of of the `filepath` if not given.
+
+data source:
+  filepath: "test/rna.txt"
+  stripheader: False # if the custom data file has a header that has to be stripped
+  columnsep: "\t" # could be "," "|", "\t" ...
+  tokensep: ","
+  specifiersep: None
+  idpos: 2 # position of the identifier of the column 
+  seqpos: 11 # position of the sequence column 
+  labelpos: 8 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
+
+
+inference model:
+  pretrainedmodel: "/path/to/your/experiement/fine-tune/0" # Path to a model that you've preveiously trained.
 ```
 
 ## Command Line Options

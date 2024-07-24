@@ -2,7 +2,6 @@ from biolm_utils.config import Config, set_config
 from transformers import BertConfig, DefaultDataCollator, PreTrainedTokenizerFast
 from transformers.image_processing_utils import BaseImageProcessor
 
-# from rna_cnn_dataset import RNACNNDataset
 from rna_cnn_models import HFSaluki
 
 params = [
