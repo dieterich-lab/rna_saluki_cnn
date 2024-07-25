@@ -30,7 +30,7 @@ fine-tuning data source:
   seqpos: 1 # position of the sequence column 
   labelpos: 1 # position of the label column 
   weightpos: None # position of the column containing quality labels with allowed labels: ["STRONG", "GOOD", "WEAK", "POOR"]
-  splitpos: 1 # position of the split identifier for cross validaton
+  splitpos: 1 # position of the split identifier for cross validaton. If `None`, data samples are shuffled and randomly assigned to 90/10 train/eval splits.
 
 #
 # If you want to tokenize, you only need to specify the following.

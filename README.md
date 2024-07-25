@@ -49,17 +49,18 @@ Please adhere to the [example workflow](#example-workflow) to retrace the single
 
 ## Dummy config files
 
-We offer two dummy config files. The first one is for the pipeline of **tokenization**, **fine-tuning**, **testing** (testing is also done during fine-tuning, but can be also again separately invoked) and **extracting loo scores**. The other one is for **inference** (getting predictions on new files) and **interpret** modes. The latter one is noticeably smaller as all the training cofigurations fall away.
+We offer two dummy config files. The first one is for the pipeline of **tokenization**, **fine-tuning**  and **interpretation**. The other one is for **predicting** (infeerence on a test file). The latter one is noticeably smaller as all the training cofigurations fall away.
 
 ```bash
 exampleconfigs
-├── inference_interpret.yaml
-├── tokenize_fine_tune_test_interpret.yaml
+├── predict.yaml
+├── tokenize_fine-tune_interpret.yaml
 ```
 
 ## Pathing and Results
 
 The software will save all experiment data in the [`outputpath`](#0-designate-an-outputpath) (or fall back to the file path stem of the input file if not given). This directory will be created if not existant. There, we will save the dataset (tokenized samples from the given filepath), the tokenizer and the models. I.e. assuming we use cross valdiation via 3 splits and having fine-tuned a model, the directory will look as follows (commented are only files concerning your results):
+
 
 ```bash
 ├── fine-tune
@@ -143,7 +144,7 @@ fine-tuning data source:
   seqpos: 1 # Position of the actual sequence in your file (your "input data").
   labelpos: 1 # Position of the label column .
   weightpos: None # Position of the column containing quality labels with allowed labels: ["STRONG", "GOOD", "WEAK", "POOR"].
-  splitpos: 1 # If your data contains designated splits (at least 3) for which we can carry out cross validation. If there is not such a column, just change to `False` (see below for further explanation).
+  splitpos: 1 # If your data contains designated splits (at least 3) for which we can carry out cross validation. If there is not such a column, just change to `None` (see below for further explanation).
   pretrainedmodel: None # Path to an external tokenizer that diverts from the one that you trained within the project.
   ```
 
@@ -155,9 +156,8 @@ A prototypical dataset file would look like this (without header)
 
 There are certain specifics regarding the following entries:
 
-- `splitpos`: If it is set to `None` fine-tuning is carried out on a 90/10 train/val split with no subsequent testing. If a splits position is given, we expect at least three different splits on which we do cross validation by:
-  - setting each split as a dedicated test set
-  - setting the following split as a dedicated validation set
+- `splitpos`: If it is set to `None` fine-tuning is carried out on a 90/10 train/val split. If a splits position is given, we expect at least three different splits on which we do cross validation by:
+  - setting each split as a dedicated validation set
   - and training on the rest of the splits.
 
 - `specifiersep` (**one-hot encoding only**): If you want to decorate your atomic tokens with float numbers you can do so, by denoting a separator after which you append the float number(s) to the atomic token. For example, you could specify `specifiersep: #` for generating your samples as: `a#2.5, c, A, g#5.7, ...` or even with multiple modiefiers like `a#2.5#0.2, c, A, g#5.7, ...` . The decorating float numbers are then appended to new "channels" of the one-hot encoding. Regarding the last sample from above, this would result in a one-hot-encoding of (assuming a vocabulary of `[a, c, g, t, A, C, G, T]`):
@@ -184,7 +184,7 @@ The term "tokenization" originates form language modelling terminolgy and origin
 To train a tokenizer, you'll beusing the `tokenize` mode:
 
 ```bash
-python saluki.py tokenize --configfile exampleconfigs/tokenize_fine-tune_test_interpret.yaml
+python saluki.py tokenize --configfile exampleconfigs/tokenize_fine-tune_interpret.yaml
 ```
 There are no real parameters to change in the configfile. The only valid option is to downsample your file for "learning" a tokenizer if it is huge, albeit this option is rather important for other realisations of the `biolm_utils` framework.
 
@@ -205,10 +205,10 @@ tokenization:
 For fine-tuning (training) a model, the `fine-tune` mode is required:
 
 ```bash
-python saluki.py fine-tune --configfile exampleconfigs/tokenize_fine-tune_test_interpret.yaml
+python saluki.py fine-tune --configfile exampleconfigs/tokenize_fine-tune_interpret.yaml
 ```
 
-In your config file you can make certain modifications to the training settings:
+Depending on the `splitpos` argument, fine-tuning will be carried out on a 90/10 train/eval split or via cross validaton on each split as validation set. In your config file you can make certain modifications to the training settings:
 
 > **Attention**: Do not change the `blocksize` as this is the default sequence length for the CNN-RNN to function properly.
 
@@ -238,7 +238,7 @@ Now that you've trained a model (new models) you probably want to make predictio
 python saluki.py predict --configfile exampleconfigs/predict.yaml
 ```
 
-As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict.yaml) for this purpose. It's now all about declaring the structure of the new data source, the trained model to infer from and where to save the results. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` ans so on, see [Pathing and Results](#pathing-and-results)).
+As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict.yaml) for this purpose. It's now all about declaring the structure of the new data source, the trained model to infer from and where to save the results. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` and so on, see [Pathing and Results](#pathing-and-results)).
 
 ```yaml
 outputpath: "experiments/test_saluki/predict"  # Path where to store the predictions. Will revert to folder of of the `filepath` if not given.
@@ -257,6 +257,10 @@ data source:
 inference model:
   pretrainedmodel: "/path/to/your/experiement/fine-tune/0" # Path to a model that you've preveiously trained.
 ```
+
+### 5) Interpretation
+
+
 
 ## Command Line Options
 
