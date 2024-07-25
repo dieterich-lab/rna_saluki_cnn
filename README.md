@@ -184,7 +184,7 @@ The term "tokenization" originates form language modelling terminolgy and origin
 To train a tokenizer, you'll beusing the `tokenize` mode:
 
 ```bash
-python saluki.py tokenize --configfile exampleconfigs/tokenize_fine-tune_interpret.yaml
+python saluki.py tokenize --configfile exampleconfigs/tokenize_fine-tune.yaml
 ```
 There are no real parameters to change in the configfile. The only valid option is to downsample your file for "learning" a tokenizer if it is huge, albeit this option is rather important for other realisations of the `biolm_utils` framework.
 
@@ -205,7 +205,7 @@ tokenization:
 For fine-tuning (training) a model, the `fine-tune` mode is required:
 
 ```bash
-python saluki.py fine-tune --configfile exampleconfigs/tokenize_fine-tune_interpret.yaml
+python saluki.py fine-tune --configfile exampleconfigs/tokenize_fine-tune.yaml
 ```
 
 Depending on the `splitpos` argument, fine-tuning will be carried out on a 90/10 train/eval split or via cross validaton on each split as validation set. In your config file you can make certain modifications to the training settings:
@@ -235,10 +235,10 @@ settings:
 Now that you've trained a model (new models) you probably want to make predictions on new data. To do so, you can use `predict` mode: 
 
 ```bash
-python saluki.py predict --configfile exampleconfigs/predict.yaml
+python saluki.py predict --configfile exampleconfigs/predict_interpret.yaml
 ```
 
-As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict.yaml) for this purpose. It's now all about declaring the structure of the new data source, the trained model to infer from and where to save the results. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` and so on, see [Pathing and Results](#pathing-and-results)).
+As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict.yaml) for this purpose. It's now all about declaring the structure of the new data source, and where to save the results and where to find the trained model to infer from. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` and so on, see [Pathing and Results](#pathing-and-results)):
 
 ```yaml
 outputpath: "experiments/test_saluki/predict"  # Path where to store the predictions. Will revert to folder of of the `filepath` if not given.
@@ -260,8 +260,36 @@ inference model:
 
 ### 5) Interpretation
 
+As a last step, you certainly want to get intepretations for your predictions.  To do so, you can use `predict` mode: 
+
+```bash
+python saluki.py interpret --configfile exampleconfigs/predict_interpret.yaml
+```
+Similar to [inference](#4-inference-predicting), most of the training parameters are obsolete, so we provide a [slimmer inference config file](exampleconfigs/predict.yaml). For Interpretability, we resort to [leave-one-out scores](https://aclanthology.org/N19-1357.pdf). "Leaving out" a token can be handled in three different ways:
+
+- `remove`: The token will be removed from the sequence ant not replace.
+- `mask`: The token will be removed with the tokenizer's `[MASK]` token.
+- `replace`: The token will be exchanged for all it case sensitive variants (e.g. `A` --> [`C`, `G`, `T`] or `cej` --> [`aej`, `gej`, `tej`])
+
+As for inference, you in the config file you should declare the new data source, where to save the results and where to find the trained model to infer from. 
+
+```yaml
+outputpath: "experiments/test_saluki/predict"  # Path where to store the predictions. Will revert to folder of of the `filepath` if not given.
+
+data source:
+  filepath: "test/rna.txt"
+  stripheader: False # if the custom data file has a header that has to be stripped
+  columnsep: "\t" # could be "," "|", "\t" ...
+  tokensep: ","
+  specifiersep: None
+  idpos: 2 # position of the identifier of the column 
+  seqpos: 11 # position of the sequence column 
+  labelpos: 8 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
 
 
+inference model:
+  pretrainedmodel: "/path/to/your/experiement/fine-tune/0" # Path to a model that you've preveiously trained.
+```
 ## Command Line Options
 
 Concluding the [workflow tutorial](#example-workflow), we here list all the command line options together with their detailed explanation stemming from the [biolm_utils command line parser](https://github.com/dieterich-lab/biolm_utils/blob/main/biolm_utils/params.py).
