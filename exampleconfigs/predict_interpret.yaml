@@ -3,7 +3,7 @@
 #
 outputpath: "test_folder"  # If None, will be set to the file name (without extension)
 
-data source:
+inference data source:
   filepath: "data_to_be_predicted.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
@@ -13,9 +13,33 @@ data source:
   seqpos: 2 # position of the sequence column 
   labelpos: 3 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
 
+#
+# State the encoding of the pretrained model
+#
+tokenization:
+  encoding: atomic # DO NOT CHANGE. This is the default encoding of one-hot-encodings for CNN inputs.
 
 inference model:
   pretrainedmodel: "path/to/fine-tuned-model" # path of the fine-tuned model to infer from
+
+#
+# The following are detailed settings for the training/fine-tuning mode. 
+#
+settings:
+  data pre-processing:
+    centertoken: False # either False or a character on which the sequence will be centered
+  environment:
+    ngpus: 1 # [1, 2, 4] # TODO: automatically infer this from the environment
+  training:
+    batchsize: 8
+    blocksize: 12288 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
+    scaling: log # label scaling [log, minmax, standard]
+
+#
+# The following are detailed settings for the interpretation mode
+#
+looscores:
+  handletokens: remove # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
 
 #
 # Specific options for debugigng or dataset creation

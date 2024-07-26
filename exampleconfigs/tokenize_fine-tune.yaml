@@ -58,12 +58,6 @@ settings:
     weightedregression: False # under development
 
 #
-# The following are detailed settings for the interpretation mode
-#
-looscores:
-  handletokens: remove # One of [remove, mask]. This determines how to treat the absence of a token during leave-one-out calculation.
-
-#
 # Specific options for debugigng or dataset creation
 #
 debugging: 
