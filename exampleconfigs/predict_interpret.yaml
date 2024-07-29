@@ -1,10 +1,10 @@
 #
 # Below is the outputpath where all (model) files are being saved
 #
-outputpath: "test_folder"  # If None, will be set to the file name (without extension)
+outputpath: "test_folder"  # Where to save predictions / interpretations. If None, will be set to the file name (without extension)
 
 inference data source:
-  filepath: "data_to_be_predicted.txt"
+  filepath: "data_to_be_predicted_or_to_be_inferred_from.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
   tokensep: ","
@@ -23,7 +23,7 @@ inference model:
   pretrainedmodel: "path/to/fine-tuned-model" # path of the fine-tuned model to infer from
 
 #
-# The following are detailed settings for the training/fine-tuning mode. 
+# Genral settings for model predictons.
 #
 settings:
   data pre-processing:
@@ -36,10 +36,11 @@ settings:
     scaling: log # label scaling [log, minmax, standard]
 
 #
-# The following are detailed settings for the interpretation mode
+# Interpretation settings
 #
 looscores:
   handletokens: remove # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
+  replacementlists: [["a", "b", "c"], ["x", "y", "z"]] # List of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`.",
 
 #
 # Specific options for debugigng or dataset creation

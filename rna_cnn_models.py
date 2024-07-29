@@ -145,15 +145,10 @@ class Saluki(nn.Module):
 
 class HFSaluki(PreTrainedModel):
     def __init__(self, config):
-        # def __init__(self, config, input_size):
         super().__init__(config)
         self.model = Saluki(input_size=config.input_size, num_labels=config.num_labels)
-        # self.model = Saluki(input_size=config.input_size)
 
     def forward(self, input_ids, **kwargs):
-        # def forward(self, **kwargs):
-        # x = kwargs["input_ids"]
-        # x = self.model(x)
         x = self.model(input_ids)
         return {"logits": x}
 

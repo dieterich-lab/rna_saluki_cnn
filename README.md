@@ -53,8 +53,8 @@ We offer two dummy config files. The first one is for the pipeline of **tokeniza
 
 ```bash
 exampleconfigs
-├── predict.yaml
-├── tokenize_fine-tune_interpret.yaml
+├── predict_interpret.yaml
+├── tokenize_fine-tune.yaml
 ```
 
 ## Pathing and Results
@@ -274,21 +274,45 @@ Similar to [inference](#4-inference-predicting), most of the training parameters
 As for inference, you in the config file you should declare the new data source, where to save the results and where to find the trained model to infer from. 
 
 ```yaml
-outputpath: "experiments/test_saluki/predict"  # Path where to store the predictions. Will revert to folder of of the `filepath` if not given.
+outputpath: "test_folder"  # If None, will be set to the file name (without extension)
 
-data source:
-  filepath: "test/rna.txt"
+inference data source:
+  filepath: "data_to_be_predicted_or_to_be_inferred_from.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
   tokensep: ","
   specifiersep: None
-  idpos: 2 # position of the identifier of the column 
-  seqpos: 11 # position of the sequence column 
-  labelpos: 8 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
+  idpos: 1 # position of the identifier of the column 
+  seqpos: 2 # position of the sequence column 
+  labelpos: 3 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
 
+#
+# State the encoding of the pretrained model
+#
+tokenization:
+  encoding: atomic # DO NOT CHANGE. This is the default encoding of one-hot-encodings for CNN inputs.
 
 inference model:
-  pretrainedmodel: "/path/to/your/experiement/fine-tune/0" # Path to a model that you've preveiously trained.
+  pretrainedmodel: "path/to/fine-tuned-model" # path of the fine-tuned model to infer from
+
+#
+# Genral settings for model predictons.
+#
+settings:
+  data pre-processing:
+    centertoken: False # either False or a character on which the sequence will be centered
+  environment:
+    ngpus: 1 # [1, 2, 4] # TODO: automatically infer this from the environment
+  training:
+    batchsize: 8
+    blocksize: 12288 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
+    scaling: log # label scaling [log, minmax, standard]
+
+#
+# Interpretation settings
+#
+looscores:
+  handletokens: remove # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
 ```
 ## Command Line Options
 
