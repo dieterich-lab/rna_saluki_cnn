@@ -59,7 +59,11 @@ exampleconfigs
 
 ## Pathing and Results
 
-The software will save all experiment data in the [`outputpath`](#0-designate-an-outputpath) (or fall back to the file path stem of the input file if not given). This directory will be created if not existant. There, we will save the dataset (tokenized samples from the given filepath), the tokenizer and the models. I.e. assuming we use cross valdiation via 3 splits and having fine-tuned a model, the directory will look as follows (commented are only files concerning your results):
+The software will save all experiment data in the [`outputpath`](#0-designate-an-outputpath) (or fall back to the file path stem of the input file if not given). This directory will be created if not existant. There, we will save the dataset (tokenized samples from the given filepath), the tokenizer and the models. 
+
+### Tokenization (`tokenize`) and fine-tuning (`fine-tune`):
+
+Assuming we use cross valdiation via 3 splits and having fine-tuned a model, the directory will look as follows (commented are only files concerning your results):
 
 
 ```bash
@@ -92,8 +96,37 @@ The software will save all experiment data in the [`outputpath`](#0-designate-an
 └── tokenizer.json
 ```
 
-## Example workflow
+### Inference (`predict`) and Interpration (`interpret`):
 
+Assuming we would use the directory "predictions for `predict` and "looscores" for `interpret`, the the results in the directories will look as follows:
+
+```bash
+predictions
+├── dataset.json  # saved dataset for quicker load when run multiple times (can be deleted)
+├── logs # log folder
+├── rank_deltas.csv # file denoting the spearman rank for each sample
+└── test_predictions.csv # file denoting the prediction for each sample
+```
+
+```bash
+looscores
+├── dataset.json  # saved dataset for quicker load when run multiple times (can be deleted)
+├── logs # log folder
+├── loo_scores_replace.csv # the .csv file containing the results (in this case for each replacment). Header is `sequence,token,replacement,label,pred,start_offset,end_offset,loo`
+└── loo_scores_replace.pkl # same as above, but as `shap.Explanation` object for easier analysis with the `shap` library.
+```
+
+The header of the `loo_scores_{handletokens}.csv` can be read as follows:
+- `sequence`: The sequence id / identifier
+- `token`: the actual token (for `remove` it was deleted from the sequence, for `mask` it's one-hot encoding was set to zero, for `replace` it was replaced with the token under `replacement`, see below)
+- `replacement`: Only valid for `handletokens: replace`, see above
+- `label`: The true regression value
+- `pred`: The predicted regression value
+- `start_offset`: Start offset in the sequence (zero-indexed)
+- `end_offset`: End offset in the sequence (zero-indexed). Example: The `a` in `cgat` would have start/end index of (2, 3)
+- `loo`: The loo score: positive means, the prediction increased for the value of `loo`, negative means, the predictions decreased for that amount
+
+## Example workflow
 
 This tutorial will lead you through an end-to-end process of training a tokenizer and fine-tuning a model. When you have questions about the arguments used here, you can read in detail about them in the [command line options](#command-line-options) section of this README.
 
