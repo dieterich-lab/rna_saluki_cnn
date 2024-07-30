@@ -238,24 +238,42 @@ Now that you've trained a model (new models) you probably want to make predictio
 python saluki.py predict --configfile exampleconfigs/predict_interpret.yaml
 ```
 
-As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict.yaml) for this purpose. It's now all about declaring the structure of the new data source, and where to save the results and where to find the trained model to infer from. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` and so on, see [Pathing and Results](#pathing-and-results)):
+As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict_interpret.yaml) for this purpose. It's now all about declaring the structure of the new data source, and where to save the results and where to find the trained model to infer from. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` and so on, see [Pathing and Results](#pathing-and-results)):
 
 ```yaml
-outputpath: "experiments/test_saluki/predict"  # Path where to store the predictions. Will revert to folder of of the `filepath` if not given.
+outputpath: "test_folder"  # If None, will be set to the file name (without extension)
 
-data source:
-  filepath: "test/rna.txt"
+inference data source:
+  filepath: "data_to_be_predicted_or_to_be_inferred_from.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
   tokensep: ","
   specifiersep: None
-  idpos: 2 # position of the identifier of the column 
-  seqpos: 11 # position of the sequence column 
-  labelpos: 8 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
+  idpos: 1 # position of the identifier of the column 
+  seqpos: 2 # position of the sequence column 
+  labelpos: 3 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
 
+#
+# State the encoding of the pretrained model
+#
+tokenization:
+  encoding: atomic # DO NOT CHANGE. This is the default encoding of one-hot-encodings for CNN inputs.
 
 inference model:
-  pretrainedmodel: "/path/to/your/experiement/fine-tune/0" # Path to a model that you've preveiously trained.
+  pretrainedmodel: "path/to/fine-tuned-model" # path of the fine-tuned model to infer from
+
+#
+# Genral settings for model predictons.
+#
+settings:
+  data pre-processing:
+    centertoken: False # either False or a character on which the sequence will be centered
+  environment:
+    ngpus: 1 # [1, 2, 4] # TODO: automatically infer this from the environment
+  training:
+    batchsize: 8
+    blocksize: 12288 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
+    scaling: log # label scaling [log, minmax, standard]
 ```
 
 ### 5) Interpretation
@@ -265,13 +283,20 @@ As a last step, you certainly want to get intepretations for your predictions.  
 ```bash
 python saluki.py interpret --configfile exampleconfigs/predict_interpret.yaml
 ```
-Similar to [inference](#4-inference-predicting), most of the training parameters are obsolete, so we provide a [slimmer inference config file](exampleconfigs/predict.yaml). For Interpretability, we resort to [leave-one-out scores](https://aclanthology.org/N19-1357.pdf). "Leaving out" a token can be handled in three different ways:
+
+Similar to [inference](#4-inference-predicting), most of the training parameters are obsolete, so we provide a [slimmer inference config file](exampleconfigs/predict_interpret.yaml). For Interpretability, we resort to [leave-one-out scores](https://aclanthology.org/N19-1357.pdf). "Leaving out" a token can be handled in three different ways:
 
 - `remove`: The token will be removed from the sequence ant not replace.
 - `mask`: The token will be removed with the tokenizer's `[MASK]` token.
-- `replace`: The token will be exchanged for all it case sensitive variants (e.g. `A` --> [`C`, `G`, `T`] or `cej` --> [`aej`, `gej`, `tej`])
+- `replace`: The token will be exchanged for against other tokens specified by `replacementslist`. In the example below, `a` is replaced against `[b, c]`, `b` against `[a, c]` and so on.
 
-As for inference, you in the config file you should declare the new data source, where to save the results and where to find the trained model to infer from. 
+As for inference, in the config file you should declare the new data source, where to save the results and where to find the trained model to infer from. 
+
+> **Attention**: Although the calculation of LOO scores is batched, it is still fairly expensive:
+>
+>    - For `remove`/`mask`: In a sequence of 1,000 tokens each token will either be removed or replaced its one-hot-vector set to zero which results in 1,000 samples for single sequence.
+>    - For `replace`: In a sequence of 1,000 tokens each token will be replaced by X mutual tokens, resulting in 1,000 * X samples.
+
 
 ```yaml
 outputpath: "test_folder"  # If None, will be set to the file name (without extension)
@@ -313,7 +338,9 @@ settings:
 #
 looscores:
   handletokens: remove # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
+  replacementlists: [["a", "b", "c"], ["x", "y", "z"]] # List of lists of atomic tokens that should be replaced against each other if `handletokens` is set to `replace`.
 ```
+
 ## Command Line Options
 
 Concluding the [workflow tutorial](#example-workflow), we here list all the command line options together with their detailed explanation stemming from the [biolm_utils command line parser](https://github.com/dieterich-lab/biolm_utils/blob/main/biolm_utils/params.py).
@@ -359,6 +386,8 @@ Concluding the [workflow tutorial](#example-workflow), we here list all the comm
   --weightedregression  Uses quality labels as weights for the loss function.
   --handletokens {remove,mask,replace}
                         How to handle 'missing' tokens during interpretability calculations.
+  --replacementlists REPLACEMENTLISTS
+                        List of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`.
   --silent              If set to True, verbose printing of the transformers library is disabled. Only results are printed.
   --dev [DEV]           A flag to speed up processes for debugging by sampling down training data to the given amount of samples and using this data also for validation steps.
   --getdata             Only tokenize and save the data to file, then quit.
