@@ -1,16 +1,16 @@
 # `rna_saluki_cnn`: A plugin to run bioinformatical CNN-RNN Models.
 
-This projects implements fine-tuning of the [Saluki](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02811-x) model for regressing half lives of RNA and protein sequences. In addition, it supports the extraction of leave-one-out (LOO) scores for fine-tuned models to analyse importance scores of individual inputs.
+This projects implements fine-tuning of the [Saluki](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02811-x) model for regressing half lives of RNA. In addition, it supports the extraction of leave-one-out (LOO) scores for fine-tuned models to analyse importance scores of individual inputs.
 
 In detail, the following steps are implemented:
 
-- Tokenization of RNA/Protein sequences via one-hot encoding of molecules.
+- Tokenization of RNA sequences via one-hot encoding of molecules.
 - Fine-tune models for regression.
 - Calculation of leave-one-out scores for you fine-tuned model.
 
 ## Installation
 
-First clone the repo and cd into it. Then, we recommend to create a dedicated environment ([python venv](https://docs.python.org/3/library/venv.html)) for the project. Now, you install the project via the [Pipfile](./Pipfile) file which in turn will install the [biolm_utils](https://github.com/dieterich-lab/biolm_utils) library. Summarising, excute the following steps:
+First clone the repo and cd into it. Then, we recommend to create a dedicated environment ([python venv](https://docs.python.org/3/library/venv.html)) for the project. Now, you install the project via the [Pipfile](./Pipfile) file which in turn will install the [biolm_utils](https://github.com/dieterich-lab/biolm_utils) library. Summarising, execute the following steps:
 
 ```bash
 git clone https://github.com/dieterich-lab/rna_saluki_cnn.git
@@ -27,7 +27,7 @@ pipenv install
 ├── exampleconfigs # exampleconfigs to work with
 ├── Pipfile # installation file
 ├── README.md
-├── rna_cnn_models.py # Implementation of the models, espcially implementing the `getconfig()` method.
+├── rna_cnn_models.py # Implementation of the model, espcially implementing the `getconfig()` method.
 ├── saluki.py # Main script importing the `run()` function from `biolm_utils` and declaration of the model/data/training configuration.
 ```
 
@@ -45,11 +45,13 @@ To get a verbose exlplanation on all the possible parameters you can run the fol
 python saluki.py -h 
 ```
 
-Please adhere to the [example workflow](#example-workflow) to retrace the single steps. For specific usage and information about the configuration parameters we refer the user to the [README](https://github.com/dieterich-lab/biolm_utils/blob/main/README.md) of the `biolm_utils` framework. 
+Please adhere to the [example workflow](#example-workflow) to retrace the single steps. For specific usage and information about the configuration parameters we refer the user to the [command line options section](#command-line-options).
 
-## Dummy config files
 
-We offer two dummy config files. The first one is for the pipeline of **tokenization**, **fine-tuning**  and **interpretation**. The other one is for **predicting** (infeerence on a test file). The latter one is noticeably smaller as all the training cofigurations fall away.
+## Example config files
+
+
+We offer two example config files. The first one is for the pipeline of **tokenization** and **fine-tuning**. The other one is for **predicting** (inference on a test file) and **interpreting** (generation of LOO scores). The latter one is noticeably smaller as all the training cofigurations fall away.
 
 ```bash
 exampleconfigs
@@ -61,12 +63,11 @@ exampleconfigs
 
 The software will save all experiment data in the [`outputpath`](#0-designate-an-outputpath) (or fall back to the file path stem of the input file if not given). This directory will be created if not existant. There, we will save the dataset (tokenized samples from the given filepath), the tokenizer and the models. 
 
-### Tokenization (`tokenize`) and fine-tuning (`fine-tune`):
+### Tokenizing (`tokenize`) and fine-tuning (`fine-tune`):
 
 Assuming we use cross valdiation via 3 splits and having fine-tuned a model, the directory will look as follows (commented are only files concerning your results):
-
-
 ```bash
+
 ├── fine-tune
 │   ├── 0
 │   │   ├── all_results.json # combined results for training, evalution & test
@@ -96,7 +97,7 @@ Assuming we use cross valdiation via 3 splits and having fine-tuned a model, the
 └── tokenizer.json
 ```
 
-### Inference (`predict`) and Interpration (`interpret`):
+### Inference (`predict`) and interpration (`interpret`):
 
 Assuming we would use the directory "predictions for `predict` and "looscores" for `interpret`, the the results in the directories will look as follows:
 
@@ -193,7 +194,7 @@ There are certain specifics regarding the following entries:
   - setting each split as a dedicated validation set
   - and training on the rest of the splits.
 
-- `specifiersep` (**one-hot encoding only**): If you want to decorate your atomic tokens with float numbers you can do so, by denoting a separator after which you append the float number(s) to the atomic token. For example, you could specify `specifiersep: #` for generating your samples as: `a#2.5, c, A, g#5.7, ...` or even with multiple modiefiers like `a#2.5#0.2, c, A, g#5.7, ...` . The decorating float numbers are then appended to new "channels" of the one-hot encoding. Regarding the last sample from above, this would result in a one-hot-encoding of (assuming a vocabulary of `[a, c, g, t, A, C, G, T]`):
+- `specifiersep`: If you want to decorate your atomic tokens with float numbers you can do so, by denoting a separator after which you append the float number(s) to the atomic token. For example, you could specify `specifiersep: #` for generating your samples as: `a#2.5, c, A, g#5.7, ...` or even with multiple modiefiers like `a#2.5#0.2, c, A, g#5.7, ...` . The decorating float numbers are then appended to new "channels" of the one-hot encoding. Regarding the last sample from above, this would result in a one-hot-encoding of (assuming a vocabulary of `[a, c, g, t, A, C, G, T]`):
 
 ```
 a | 1  | 0 | 0 | 0 |
@@ -212,7 +213,7 @@ T | 0  | 0 | 0 | 0 |
 
 ### 2) Tokenization
 
-The term "tokenization" originates form language modelling terminolgy and originally referes to splitting a contiguous sequence into subparts (tokens) and "learning a tokenizer" usually involves some statistical processes like byte pair encoding. But for this project we will simply split the sequences into individual atomic characters (see the example under [data configuration](#1-data-configuration)). These characters are then mapped to one-hot-encodings (and optionally modificaton channels).
+The term "tokenization" originates from language modelling terminolgy and originally refers to splitting a contiguous sequence into subparts (tokens) and "learning a tokenizer" usually involves some statistical processes like byte pair encoding. But for this project we will simply split the sequences into individual atomic characters (see the example under [data configuration](#1-data-configuration)). These characters are then mapped to one-hot-encodings (and optionally modificaton channels).
 
 To train a tokenizer, you'll beusing the `tokenize` mode:
 
@@ -311,7 +312,7 @@ settings:
 
 ### 5) Interpretation
 
-As a last step, you certainly want to get intepretations for your predictions.  To do so, you can use `predict` mode: 
+As a last step, you certainly want to get intepretations for your predictions.  To do so, you can use `interpret` mode: 
 
 ```bash
 python saluki.py interpret --configfile exampleconfigs/predict_interpret.yaml
@@ -422,6 +423,7 @@ Concluding the [workflow tutorial](#example-workflow), we here list all the comm
                         How to handle 'missing' tokens during interpretability calculations.
   --replacementlists REPLACEMENTLISTS
                         List of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`.
+  --replacespecifier    if `True` and `handletokens` is set to `replace`, the modifiers (separated by `specifiersep`) will olso nce be set to `0.0`.
   --silent              If set to True, verbose printing of the transformers library is disabled. Only results are printed.
   --dev [DEV]           A flag to speed up processes for debugging by sampling down training data to the given amount of samples and using this data also for validation steps.
   --getdata             Only tokenize and save the data to file, then quit.
