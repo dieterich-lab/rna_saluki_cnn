@@ -320,8 +320,8 @@ python saluki.py interpret --configfile exampleconfigs/predict_interpret.yaml
 
 Similar to [inference](#4-inference-predicting), most of the training parameters are obsolete, so we provide a [slimmer inference config file](exampleconfigs/predict_interpret.yaml). For Interpretability, we resort to [leave-one-out scores](https://aclanthology.org/N19-1357.pdf). "Leaving out" a token can be handled in three different ways:
 
-- `remove`: The token will be removed from the sequence ant not replace.
-- `mask`: The token will be removed with the tokenizer's `[MASK]` token.
+- `remove`: The token will be completely removed from the sequence.
+- `mask`: The token will be replaced with the tokenizer's `[MASK]` token.
 - `replace`: The token will be exchanged for against other tokens specified by `replacementslist`. In the example below, `a` is replaced against `[b, c]`, `b` against `[a, c]` and so on.
 
 As for inference, in the config file you should declare the new data source, where to save the results and where to find the trained model to infer from. 
