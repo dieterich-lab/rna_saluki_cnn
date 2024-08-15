@@ -1,11 +1,11 @@
 # `rna_saluki_cnn`: A plugin to run bioinformatical CNN-RNN Models.
 
-This projects implements fine-tuning of the [Saluki](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02811-x) model for regressing half lives of RNA. In addition, it supports the extraction of leave-one-out (LOO) scores for fine-tuned models to analyse importance scores of individual inputs.
+This projects implements fine-tuning of the [Saluki](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02811-x) model for the tasks of `regression` and `classification`. In addition, it supports the extraction of leave-one-out (LOO) scores for fine-tuned models to analyse importance scores of individual inputs.
 
 In detail, the following steps are implemented:
 
 - Tokenization of RNA sequences via one-hot encoding of molecules.
-- Fine-tune models for regression.
+- Fine-tune models for regression and classification.
 - Calculation of leave-one-out scores for you fine-tuned model.
 
 ## Installation
@@ -46,7 +46,6 @@ python saluki.py -h
 ```
 
 Please adhere to the [example workflow](#example-workflow) to retrace the single steps. For specific usage and information about the configuration parameters we refer the user to the [command line options section](#command-line-options).
-
 
 ## Example config files
 
@@ -121,8 +120,8 @@ The header of the `loo_scores_{handletokens}.csv` can be read as follows:
 - `sequence`: The sequence id / identifier
 - `token`: the actual token (for `remove` it was deleted from the sequence, for `mask` it's one-hot encoding was set to zero, for `replace` it was replaced with the token under `replacement`, see below)
 - `replacement`: Only valid for `handletokens: replace`, see above
-- `label`: The true regression value
-- `pred`: The predicted regression value
+- `label`: The true regression value / class
+- `pred`: The predicted regression value / class
 - `start_offset`: Start offset in the sequence (zero-indexed)
 - `end_offset`: End offset in the sequence (zero-indexed). Example: The `a` in `cgat` would have start/end index of (2, 3)
 - `loo`: The loo score: positive means, the prediction increased for the value of `loo`, negative means, the predictions decreased for that amount
@@ -169,6 +168,7 @@ Once again, if your fine-tuning data is the one you learned the tokenizer from, 
 # Description of the fine-tuning source
 #
 fine-tuning data source:
+  task: regression # or classification
   filepath: "fine-tuning_data_file.txt" # this is the path to the file that you use to learn the tokenizer.
   stripheader: False # if the custom data file has a header that has to be stripped.
   columnsep: "\t" # could be [",", "|", "\t", ...] This denominates field separator.
@@ -176,10 +176,9 @@ fine-tuning data source:
   specifiersep: None # If you modified your input tokens, this denominates the separator token (see below for further explanations).
   idpos: 1 # Position of the identifier column of your data, e.g. "ENST00000488147", which will be printed out in the inference/interepret results.
   seqpos: 1 # Position of the actual sequence in your file (your "input data").
-  labelpos: 1 # Position of the label column .
+  labelpos: 1 # Position of the label column.
   weightpos: None # Position of the column containing quality labels with allowed labels: ["STRONG", "GOOD", "WEAK", "POOR"].
   splitpos: 1 # If your data contains designated splits (at least 3) for which we can carry out cross validation. If there is not such a column, just change to `None` (see below for further explanation).
-  pretrainedmodel: None # Path to an external tokenizer that diverts from the one that you trained within the project.
   ```
 
 A prototypical dataset file would look like this (without header)
@@ -209,7 +208,7 @@ T | 0  | 0 | 0 | 0 |
   |0.2 | 0 | 0 |5.7|
 ```
 
-- `weightpos`: We can carry out weighted regression by weighting the loss of labels with quality labels of `["STRONG", "GOOD", "WEAK", "POOR"]` with correpsonding weights of `[0.25, 0.5, 0.75, 1]`.
+- `weightpos` (regression only): We can carry out weighted regression by weighting the loss of labels with quality labels of `["STRONG", "GOOD", "WEAK", "POOR"]` with correpsonding weights of `[0.25, 0.5, 0.75, 1]`.
 
 ### 2) Tokenization
 
@@ -220,7 +219,7 @@ To train a tokenizer, you'll beusing the `tokenize` mode:
 ```bash
 python saluki.py tokenize --configfile exampleconfigs/tokenize_fine-tune.yaml
 ```
-There are no real parameters to change in the configfile. The only valid option is to downsample your file for "learning" a tokenizer if it is huge, albeit this option is rather important for other realisations of the `biolm_utils` framework.
+The only option is to downsample your file for "learning" a tokenizer if it is huge, albeit this option is rather important for other realisations of the `biolm_utils` framework.
 
 > **Attention**: Do not change the `encoding` as this is the default encoding of one-hot-encodings for CNN inputs.
 
@@ -272,7 +271,7 @@ Now that you've trained a model (new models) you probably want to make predictio
 python saluki.py predict --configfile exampleconfigs/predict_interpret.yaml
 ```
 
-As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict_interpret.yaml) for this purpose. It's now all about declaring the structure of the new data source, and where to save the results and where to find the trained model to infer from. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` and so on, see [Pathing and Results](#pathing-and-results)):
+As a lot of the training parameters are obsolete for pure inference, we provide a [slimmer inference config file](exampleconfigs/predict_interpret.yaml) for this purpose. It's now all about declaring the structure of the new data source, where to save the results and where to find the trained model to infer from. The latter will point  to a folder, where all the model specific files are stored (like `pytorch_model.bin` and so on, see [Pathing and Results](#pathing-and-results)):
 
 ```yaml
 outputpath: "test_folder"  # If None, will be set to the file name (without extension)
@@ -416,7 +415,7 @@ Concluding the [workflow tutorial](#example-workflow), we here list all the comm
                         Number of epochs without improvement on the development set before training stops.
   --resume [RESUME]     This parameter is overloaded with two options: 1) `--resume` (without parameters) triggers the huggingface internal `resume_from_checkpoint` option which will only _continue_ a training that has been interrupted. For example, a planned training that was to run for 50 epochs
                         and was interrupted at epoch 23 can be resumed from the best checkpoint to be run from epoch 23 to planned epoch 50. 2) `--resume X` will trigger further pre-training a model from its best checkpoint for additional `X` epochs.
-  --fromscratch         Finetunes a regression model on a given task with freshly initialized parameters.
+  --fromscratch         Finetunes a model on a given task with freshly initialized parameters.
   --scaling {log,minmax,stanard}
   --weightedregression  Uses quality labels as weights for the loss function.
   --handletokens {remove,mask,replace}
@@ -429,4 +428,8 @@ Concluding the [workflow tutorial](#example-workflow), we here list all the comm
   --getdata             Only tokenize and save the data to file, then quit.
   --configfile CONFIGFILE
                         Path to the a config file that will overrule CLI arguments.
+  --pretrainedmodel PRETRAINEDMODEL
+                        During inference and interpretation, this refers to the path of fine-tuned model.
+  --task {regression,classification}
+                        Determines the kind of training (with correct choice of loss function, trainer and so on).
 ```
