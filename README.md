@@ -21,6 +21,19 @@ pip install pipenv
 pipenv install
 ```
 
+To update this repository execute:
+
+```bash
+git pull
+```
+
+To also update the `biolm_utils` framework, type in:
+
+```bash
+git pull --recurse-submodules
+```
+
+
 ## File structure
 
 ```bash
