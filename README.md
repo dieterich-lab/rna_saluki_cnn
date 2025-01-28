@@ -243,6 +243,7 @@ The only option is to downsample your file for "learning" a tokenizer if it is h
 tokenization:
   samplesize: None # if your data file is to big to learn a tokenizer, you can downsample it
   encoding: atomic # DO NOT CHANGE. This is the default encoding of one-hot-encodings for CNN inputs.
+  lefttailing: True # If true, the sequences will be cut from the left (begging from the right end).
 ```
 
 

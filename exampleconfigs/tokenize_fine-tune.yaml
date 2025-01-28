@@ -38,6 +38,7 @@ fine-tuning data source:
 tokenization:
   samplesize: None # if your data file is to big to learn a tokenizer, you can downsample it
   encoding: atomic # DO NOT CHANGE. This is the default encoding of one-hot-encodings for CNN inputs.
+  lefttailing: False # If true, the sequences will be cut from the left (begging from the right end).
 
 #
 # The following are detailed settings for the training/fine-tuning mode. 
