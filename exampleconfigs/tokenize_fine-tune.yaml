@@ -21,6 +21,7 @@ tokenizing and pre-training data source:
 # Description of the fine-tuning source
 #
 fine-tuning data source:
+  task: "regression" # [regression, classification]
   filepath: "fine-tuning_data_file.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
