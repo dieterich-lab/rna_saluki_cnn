@@ -4,7 +4,6 @@
 outputpath: "test_folder"  # Where to save predictions / interpretations. If None, will be set to the file name (without extension)
 
 inference data source:
-  task: "regression" # [regression, classification]
   filepath: "data_to_be_predicted_or_to_be_inferred_from.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
