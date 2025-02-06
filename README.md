@@ -190,7 +190,8 @@ fine-tuning data source:
   seqpos: 1 # Position of the actual sequence in your file (your "input data").
   labelpos: 1 # Position of the label column.
   weightpos: None # Position of the column containing quality labels with allowed labels: ["STRONG", "GOOD", "WEAK", "POOR"].
-  splitpos: 1 # If your data contains designated splits (at least 3) for which we can carry out cross validation. If there is not such a column, just change to `None` (see below for further explanation).
+  splitpos: 1 # If your data contains designated splits (at least 3) for which we can carry out cross validation. If there is not such a column, just change to `False` (see below for further explanation).
+  splitratio:  # If your data has no designated splits, you can denote a comma-separated list as split ratio like `80,20` or `70,20,10`. If that list contains a third split, testing is triggered on that split, otherwise, no testing is done.
   ```
 
 A prototypical dataset file would look like this (without header)
@@ -200,10 +201,11 @@ A prototypical dataset file would look like this (without header)
 ```
 
 > **Attention**:There are certain specifics regarding the following entries:
-> - `splitpos`: If it is set to `None` fine-tuning is carried out on a 90/10 train/val split. If a splits position is given, we expect at least three different splits on which we do cross validation by:
->  - setting each split as a dedicated validation set
+> - `splitpos`: If it is set to `None` fine-tuning is carried out on the splits denoted in `splitratio`. If a splits position is given, we expect at least three different splits on which we do cross validation by:
+>  - setting each split as a dedicated test set
+>  - setting the succesor split as a dedicated validation set
 >  - and training on the rest of the splits.
->
+> - `splitratio`:Comma-seprated list describing the desired split ratio for train, validation and (possibly) test split in the format `train_percentage/val_percentage(/test_percentage)`, e.g. `85,15` or `70,20,10`. Must sum up to 100 (see default). Given a third splitratio triggers testing on that split.
 >- `specifiersep`: If you want to decorate your atomic tokens with float numbers you can do so, by denoting a separator after which you append the float number(s) to the atomic token. For example, you could specify `specifiersep: #` for generating your samples as: `a#2.5, c, A, g#5.7, ...` or even with multiple modiefiers like `a#2.5#0.2, c, A, g#5.7, ...` . The decorating float numbers are then appended to new "channels" of the one-hot encoding. Regarding the last sample from above, this would result in a one-hot-encoding of (assuming a vocabulary of `[a, c, g, t, A, C, G, T]`):
 
 ```
@@ -393,63 +395,4 @@ looscores:
   handletokens: remove # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
   replacementlists: [["a", "b", "c"], ["x", "y", "z"]] # List of lists of atomic tokens that should be replaced against each other if `handletokens` is set to `replace`.
   replacespecifier: True # if `True` and `handletokens` is set to `replace`, modified tokens (i.e. "a#0.7") will also be relplaced against an unmodified version (e.g. "a#0.7" --> ["c#0.7", "g#0.7", "t#0.7", "a"])`.
-```
-
-## Command Line Options
-
-Concluding the [workflow tutorial](#example-workflow), we here list all the command line options together with their detailed explanation stemming from the [biolm_utils command line parser](https://github.com/dieterich-lab/biolm_utils/blob/main/biolm_utils/params.py).
-
-```
-  --task {regression,classification}
-                        Determines the kind of training (with correct choice of loss function, trainer and so on).
-  --filepath FILEPATH   The path the data file.
-  --outputpath OUTPUTPATH
-                        Path where to store the outputs for an experiment series. Will revert to `filepath` if not given.
-  --stripheader         If the file has a header, turn on this option to discard it.
-  --columnsep COLUMNSEP
-                        Separating character for the the different columns in the file
-  --tokensep TOKENSEP   Separator for atomic tokens in your sequence.
-  --specifiersep SPECIFIERSEP
-                        Atomic encoding only. If inputs are further specified with a float number, this is the separator that it should be separated by, e.g. '...,a#2.5,...' if 'a" is further specified by '2.5'.
-  --seqpos SEQPOS       Field position of the sequence in the data file (for 'our' datasets, this will be fixed in `entry.py`).
-  --idpos IDPOS         Field position of the sequence in the data file (for 'our' datasets, this will be fixed in `entry.py`).
-  --splitpos SPLITPOS   The field position of the split identifier of the split. or 'None' if no cross validation is desired.
-  --labelpos LABELPOS   Field position of the label in the data file (for 'our' datasets, this will be fixed in `entry.py`).
-  --weightpos WEIGHTPOS
-                        Field position of the regression weights in the data file.
-  --samplesize SAMPLESIZE
-                        If your sample data is to big, you can downsample it
-  --atomicreplacements ATOMICREPLACEMENTS
-                        A dictionary-like string that contains the replacements of multi character tokens to atomic characters of the BPE-alphabet, i.e. `{'-CDSstop': 's'}`.
-  --centertoken CENTERTOKEN
-                        If the input string extends the 512 token length, it is centered around the given token.
-  --ngpus {1,2,4}       Number of GPUs that is being trained on (only even numbers up to 4 are allowed).
-  --accelerator {gpu,cpu}
-                        Option to train on GPU or CPU.
-  --batchsize BATCHSIZE
-                        This batch size will be multiplied by 4 with gradient accumulation. If you don't want this, change `gradacc` to the desired value. Also, we prohibit batch sizes <2 and advise the user to batch sizes >8 as batch normalization will suffer elsewise.
-  --learningrate LEARNINGRATE
-                        Denote a specific learning rate
-  --gradacc GRADACC     The number of batches to be aggregated before calculating gradients. With a `batchsize` of 16, the effective batch size will 64. Default is set to `4` and shoould not be lowered as we account for GPU parallelization with it. This guarantees that we will always have the same
-                        effective batch size.
-  --nepochs NEPOCHS
-  --patience [PATIENCE]
-                        Number of epochs without improvement on the development set before training stops.
-  --resume [RESUME]     This parameter is overloaded with two options: 1) `--resume` (without parameters) triggers the huggingface internal `resume_from_checkpoint` option which will only _continue_ a training that has been interrupted. For example, a planned training that was to run for 50 epochs
-                        and was interrupted at epoch 23 can be resumed from the best checkpoint to be run from epoch 23 to planned epoch 50. 2) `--resume X` will trigger further pre-training a model from its best checkpoint for additional `X` epochs.
-  --fromscratch         Finetunes a model on a given task with freshly initialized parameters.
-  --scaling {log,minmax,stanard}
-  --weightedregression  Uses quality labels as weights for the loss function.
-  --handletokens {remove,mask,replace}
-                        How to handle 'missing' tokens during interpretability calculations.
-  --replacementlists REPLACEMENTLISTS
-                        List of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`.
-  --replacespecifier    if `True` and `handletokens` is set to `replace`, the modifiers (separated by `specifiersep`) will olso nce be set to `0.0`.
-  --silent              If set to True, verbose printing of the transformers library is disabled. Only results are printed.
-  --dev [DEV]           A flag to speed up processes for debugging by sampling down training data to the given amount of samples and using this data also for validation steps.
-  --getdata             Only tokenize and save the data to file, then quit.
-  --configfile CONFIGFILE
-                        Path to the a config file that will overrule CLI arguments.
-  --pretrainedmodel PRETRAINEDMODEL
-                        During inference and interpretation, this refers to the path of fine-tuned model.
 ```
