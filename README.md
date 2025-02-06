@@ -205,7 +205,7 @@ A prototypical dataset file would look like this (without header)
 >  - setting each split as a dedicated test set
 >  - setting the succesor split as a dedicated validation set
 >  - and training on the rest of the splits.
-> - `splitratio`:Comma-seprated list describing the desired split ratio for train, validation and (possibly) test split in the format `train_percentage/val_percentage(/test_percentage)`, e.g. `85,15` or `70,20,10`. Must sum up to 100 (see default). Given a third splitratio triggers testing on that split.
+> - `splitratio`: Comma-seprated list describing the desired split ratio for train, validation and (possibly) test split in the format `train_percentage/val_percentage(/test_percentage)`, e.g. `85,15` or `70,20,10`. Must sum up to 100 (see default). Given a third splitratio triggers testing on that split.
 >- `specifiersep`: If you want to decorate your atomic tokens with float numbers you can do so, by denoting a separator after which you append the float number(s) to the atomic token. For example, you could specify `specifiersep: #` for generating your samples as: `a#2.5, c, A, g#5.7, ...` or even with multiple modiefiers like `a#2.5#0.2, c, A, g#5.7, ...` . The decorating float numbers are then appended to new "channels" of the one-hot encoding. Regarding the last sample from above, this would result in a one-hot-encoding of (assuming a vocabulary of `[a, c, g, t, A, C, G, T]`):
 
 ```
