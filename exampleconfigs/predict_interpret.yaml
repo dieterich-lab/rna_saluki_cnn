@@ -39,9 +39,9 @@ settings:
 # Interpretation settings
 #
 looscores:
-  handletokens: replace # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
-  replacementlists: [["a", "b", "c"], ["x", "y", "z"]] # List of lists of atomic tokens that should be replaced against each other if `handletokens` is set to `replace`.
-  replacespecifier: True # if `True` and `handletokens` is set to `replace`, modified tokens (i.e. "a#0.7") will also be replaced against an unmodified version (e.g. "a#0.7" --> ["c#0.7", "g#0.7", "t#0.7", "a"])`.
+  handletokens: mask # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
+  replacementdict: None #  # List of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`. Must be convertible into a valid python dictionarye,.g.: '{"A": ["a", "c", "g", "t"], "a": ["A", "C", "G", "T"], "AEJ": ["aej", "cej", "gej", "tej"], "aej": ["AEJ", "CEJ", "GEJ", "TEJ"]}'
+  replacespecifier: True # WIP! If `True` and `handletokens` is set to `replace`, modified tokens (i.e. "a#0.7") will also be replaced against an unmodified version. 
 
 #
 # Specific options for debugigng or dataset creation
