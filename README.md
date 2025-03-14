@@ -67,8 +67,8 @@ We offer two example config files. The first one is for the pipeline of **tokeni
 
 ```bash
 exampleconfigs
-├── predict_interpret.yaml
 ├── tokenize_fine-tune.yaml
+├── predict_interpret.yaml
 ```
 
 ## Pathing and Results
@@ -156,7 +156,9 @@ outputpath: experiments/rna_saluki  # If None, will be set to the file name (wit
 
 ### 1) Data Configuration
 
-We designed options to give varying data sources for either tokenzation and for the fine-tuning step (if you are using the same file, just mirror the parameters accordingly). You also have to let the scripts know where exactly to find information about labels, sequences and splits in your data file. The two according sections in the config file are listed below. Attributes should be self-explanatory by their comments or explained by the command line parser. (see [usage](#usage)). Don't be confused by the mention of "pre-training"; this corresponds to the parser of the `biolm_utils` framework, but this plugin will not make use of it.
+We designed options to give varying data sources for either tokenzation and for the fine-tuning step (if you are using the same file, just mirror the parameters accordingly). You also have to let the scripts know where exactly to find information about labels, sequences and splits in your data file. The two according sections in the config file are listed below. Attributes should be self-explanatory by their comments or explained by the command line parser. (see [usage](#usage)). 
+
+> **Important**: Don't be confused by the mention of "pre-training"; this corresponds to the parser of the `biolm_utils` framework, but this plugin will not make use of it.
 
 ```yaml
 #
@@ -343,7 +345,8 @@ Similar to [inference](#4-inference-predicting), most of the training parameters
 
 - `remove`: The token will be completely removed from the sequence.
 - `mask`: The token will be replaced with the tokenizer's `[MASK]` token.
-- `replace`: The token will be exchanged for against other tokens specified by `replacementslist`. In the example below, `a` is replaced against `[b, c]`, `b` against `[a, c]` and so on.
+- `replace`: The token will be exchanged for against other tokens specified by `replacementdict`. In the example below, `a` is replaced against `[b, c]`, `b` against `[a, c]` and so on.
+- `replacementdict`: None # Dict of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`. Must be convertible into a valid python dictionarye,.g.: '{"A": ["a", "c", "g", "t"], "a": ["A", "C", "G", "T"], "AEJ": ["aej", "cej", "gej", "tej"], "aej": ["AEJ", "CEJ", "GEJ", "TEJ"]}'
 
 As for inference, in the config file you should declare the new data source, where to save the results and where to find the trained model to infer from. 
 
@@ -393,6 +396,6 @@ settings:
 #
 looscores:
   handletokens: remove # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
-  replacementlists: [["a", "b", "c"], ["x", "y", "z"]] # List of lists of atomic tokens that should be replaced against each other if `handletokens` is set to `replace`.
+  replacementdict: None #  # List of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`. Must be convertible into a valid python dictionarye,.g.: '{"A": ["a", "c", "g", "t"], "a": ["A", "C", "G", "T"], "AEJ": ["aej", "cej", "gej", "tej"], "aej": ["AEJ", "CEJ", "GEJ", "TEJ"]}'
   replacespecifier: True # if `True` and `handletokens` is set to `replace`, modified tokens (i.e. "a#0.7") will also be relplaced against an unmodified version (e.g. "a#0.7" --> ["c#0.7", "g#0.7", "t#0.7", "a"])`.
 ```
