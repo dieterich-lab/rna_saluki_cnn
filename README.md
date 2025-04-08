@@ -272,7 +272,7 @@ Depending on the `splitpos` argument, fine-tuning will be carried out on a 90/10
 ```yaml
 settings:
   data pre-processing:
-    centertoken: False # either False or a character on which the sequence will be centered
+    centertoken: False # either False or a character on which the sequence will be centered. The sequence will be equally cut from both sides (in best case: 255 left - centertoken - 255 right). If there's still space left for input tokens, we first add all remaining from the left, then from the right side of the centertoken.
   environment:
     ngpus: 1 # [1, 2, 4] # under development: automatically infer this from the environment
   training:
@@ -383,7 +383,7 @@ inference model:
 #
 settings:
   data pre-processing:
-    centertoken: False # either False or a character on which the sequence will be centered
+    centertoken: False # either False or a character on which the sequence will be centered. The sequence will be equally cut from both sides (in best case: 255 left - centertoken - 255 right). If there's still space left for input tokens, we first add all remaining from the left, then from the right side of the centertoken.
   environment:
     ngpus: 1 # [1, 2, 4] # TODO: automatically infer this from the environment
   training:
