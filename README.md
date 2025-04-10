@@ -203,11 +203,6 @@ A prototypical dataset file would look like this (without header)
 ```
 
 > **Attention**:There are certain specifics regarding the following entries:
-> - `splitpos`: If it is set to `None` fine-tuning is carried out on the splits denoted in `splitratio`. If a splits position is given, we expect at least three different splits on which we do cross validation by:
->  - setting each split as a dedicated test set
->  - setting the succesor split as a dedicated validation set
->  - and training on the rest of the splits.
-> - `splitratio`: Comma-seprated list describing the desired split ratio for train, validation and (possibly) test split in the format `train_percentage/val_percentage(/test_percentage)`, e.g. `85,15` or `70,20,10`. Must sum up to 100 (see default). Given a third splitratio triggers testing on that split.
 >- `specifiersep`: If you want to decorate your atomic tokens with float numbers you can do so, by denoting a separator after which you append the float number(s) to the atomic token. For example, you could specify `specifiersep: #` for generating your samples as: `a#2.5, c, A, g#5.7, ...` or even with multiple modiefiers like `a#2.5#0.2, c, A, g#5.7, ...` . The decorating float numbers are then appended to new "channels" of the one-hot encoding. Regarding the last sample from above, this would result in a one-hot-encoding of (assuming a vocabulary of `[a, c, g, t, A, C, G, T]`):
 
 ```
@@ -265,7 +260,15 @@ python saluki.py fine-tune --task classification --configfile exampleconfigs/tok
 
 for classification tasks.
 
-Depending on the `splitpos` argument, fine-tuning will be carried out on a 90/10 train/eval split or via cross validaton on each split as validation set. In your config file you can make certain modifications to the training settings:
+#### Splits
+
+Splits are created in the following loading order:
+
+1) If `splitpos` is set, the script assumes that (at least) 3 splits are given in a the file and exerts cross validation on these splits.
+2) Else: If `splitratio` is set, the script will create random train, validation (and test) splits according to the given split ratios.
+3) Else: Fine-tuning is done on a random 80/20 training/validation split.
+
+#### Special Configurations
 
 > **Attention**: Do not change the `blocksize` as this is the default sequence length for the CNN-RNN to function properly.
 
