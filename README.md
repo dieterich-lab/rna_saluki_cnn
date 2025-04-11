@@ -358,7 +358,6 @@ As for inference, in the config file you should declare the new data source, whe
 >    - For `remove`/`mask`: In a sequence of 1,000 tokens each token will either be removed or replaced its one-hot-vector set to zero which results in 1,000 samples for single sequence.
 >    - For `replace`: In a sequence of 1,000 tokens each token will be replaced by X mutual tokens, resulting in 1,000 * X samples.
 
-
 ```yaml
 outputpath: "test_folder"  # If None, will be set to the file name (without extension)
 
