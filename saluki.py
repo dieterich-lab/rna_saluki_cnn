@@ -24,6 +24,6 @@ params = [
 config = Config(*params)
 set_config(config)
 
-from biolm_utils.biolm import run
+from biolm_utils.biolm import main
 
-run()
+main()
