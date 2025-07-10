@@ -29,9 +29,11 @@ fine-tuning data source:
   idpos: 1 # position of the identifier of the column 
   seqpos: 1 # position of the sequence column 
   labelpos: 1 # position of the label column 
-  weightpos: None # position of the column containing quality labels with allowed labels: ["STRONG", "GOOD", "WEAK", "POOR"]
-  splitpos: 1 # position of the split identifier for cross validaton. If `None`, data samples are shuffled and randomly assigned to 90/10 train/eval splits.
-  splitratio:  # If your data has no designated splits, you can denote a comma-separated list as split ratio like `80,20` or `70,20,10`. If that list contains a third split, testing is triggered on that split, otherwise, no testing is done.
+  crossvalidation: False # trigger if cross-validation is desired. If set to `0`, no cross-validation is performed. If set to `True`, cross-validation is performed on the predifined splits in the data file, taking each split as a test set once. If set to an integer `x`, `x`-fold cross-validation is performed on random splits determined by `splitratio`.
+  splitratio: False # Comma-seprated list describing the desired split ratio for train, validation and (possibly) test split for both cross-validation and non-cross-validation. Format is `train_percentage/val_percentage(/test_percentage)`, e.g. `85,15` or `70,20,10`. Must sum up to 100 (see default). Given a third splitratio triggers testing on that split. Will be overruled in case `splitpos` parameter is set.
+  splitpos: False # int or `False` (if no splits are defined in the data file). Denotes the column in the data file where the split identifier is defined. If set to `True`, the split identifier is expected to be in the first column of the data file, i.e. the first column is expected to contain the split identifier. For non-cross-validation `devsplits` and `testsplits` must be set to use the splits.
+  devsplits: False # a list, e.g. `[1, 2, ..]` to denote the splits that should be used for validation. `splitpos` must be set for this to work.
+  devsplits: False # a list, e.g. `[1, 2, ..]` to denote the splits that should be used for validation. Setting this parameter will trigger testing on these splits. `splitpos` must be set for this to work.
 
 #
 # If you want to tokenize, you only need to specify the following.

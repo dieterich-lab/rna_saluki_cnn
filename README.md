@@ -191,9 +191,7 @@ fine-tuning data source:
   idpos: 1 # Position of the identifier column of your data, e.g. "ENST00000488147", which will be printed out in the inference/interepret results.
   seqpos: 1 # Position of the actual sequence in your file (your "input data").
   labelpos: 1 # Position of the label column.
-  weightpos: None # Position of the column containing quality labels with allowed labels: ["STRONG", "GOOD", "WEAK", "POOR"].
-  splitpos: 1 # If your data contains designated splits (at least 3) for which we can carry out cross validation. If there is not such a column, just change to `False` (see below for further explanation).
-  splitratio:  # If your data has no designated splits, you can denote a comma-separated list as split ratio like `80,20` or `70,20,10`. If that list contains a third split, testing is triggered on that split, otherwise, no testing is done.
+  ... # more parameters explained in "Fine-tuning"
   ```
 
 A prototypical dataset file would look like this (without header)
@@ -260,35 +258,73 @@ python saluki.py fine-tune --task classification --configfile exampleconfigs/tok
 
 for classification tasks.
 
-#### Splits
+We assist with multiple preconfigured modi how you can configure the training, validation and test splits. We also offer the possibility for automatic cross validation.
 
-Splits are created in the following loading order:
-
-1) If `splitpos` is set, the script assumes that (at least) 3 splits are given in a the file and exerts cross validation on these splits.
-2) Else: If `splitratio` is set, the script will create random train, validation (and test) splits according to the given split ratios.
-3) Else: Fine-tuning is done on a random 80/20 training/validation split.
-
-#### Special Configurations
-
-> **Attention**: Do not change the `blocksize` as this is the default sequence length for the CNN-RNN to function properly.
+To trigger these, you have to fill in these information in the configfile:
 
 ```yaml
-settings:
-  data pre-processing:
-    centertoken: False # either False or a character on which the sequence will be centered. The sequence will be equally cut from both sides (in best case: 255 left - centertoken - 255 right). If there's still space left for input tokens, we first add all remaining from the left, then from the right side of the centertoken.
-  environment:
-    ngpus: 1 # [1, 2, 4] # under development: automatically infer this from the environment
-  training:
-    general:
-      batchsize: 8 # This is the batch size. (effective gradients will be batchsize x gradacc, see below)
-      gradacc: 4 # Gradient accumulation: Determines how many batches of gradients should be aggregated (effective gradients will be batchsize x gradacc)
-      blocksize: 12288 # DO NOT CHANGE. This is the default sequence length for the CNN-RNN to work.
-      nepochs: 10 # Number of epochs the model iterates over the training dataset.
-      patience: 3 # Number of evaluation (once per epoch) that are carried out without improvements of the model on the evaluation set before training is stopped.
-      resume: False # When a training was cancelled (resuming) or further fine-tuning (see the general documentation of biolm_utils for further details.
-      scaling: log # label scaling [log, minmax, standard]
-      weightedregression: False # if you have quality labels for your data, then you can do weighted regression. Please fill out "weightpos" under "fine-tuning data source".
+fine-tuning data source:
+  ... # other parameters
+  crossvalidation: False # trigger if cross-validation is desired. If set to `0`, no cross-validation is performed. If set to `True`, cross-validation is performed on the predifined splits in the data file, taking each split as a test set once. If set to an integer `x`, `x`-fold cross-validation is performed on random splits determined by `splitratio`.
+  splitratio: False # Comma-seprated list describing the desired split ratio for train, validation and (possibly) test split for both cross-validation and non-cross-validation. Format is `train_percentage/val_percentage(/test_percentage)`, e.g. `85,15` or `70,20,10`. Must sum up to 100 (see default). Given a third splitratio triggers testing on that split. Will be overruled in case `splitpos` parameter is set.
+  splitpos: False # int or `False` (if no splits are defined in the data file). `splitpos` will always overrule `splitratio`. Denotes the column in the data file where the split identifier is defined. If set to `True`, the split identifier is expected to be in the first column of the data file, i.e. the first column is expected to contain the split identifier. For non-cross-validation `devsplits` and `testsplits` must be set to use the splits.
+  devsplits: False # a list, e.g. `[1, 2, ..]` to denote the splits that should be used for validation. `splitpos` must be set for this to work.
+  testsplits: False # a list, e.g. `[1, 2, ..]` to denote the splits that should be used for validation. Setting this parameter will trigger testing on these splits. `splitpos` must be set for this to work.
 ```
+
+The following graph depicts the four possible scenarios:
+```mermaid
+flowchart TD
+    cv[Cross validation?]
+    random_or_splits_noncv[random or self-assigned splits?]
+    random_or_splits_cv[random or self-assigned splits?]
+	random_noncv[training on x%,<br> eval on y%,<br>if given: test on z%]:::A
+	splits_noncv[uses testplits for testing,<br> devsplits for evaluation,<br> others for training]:::B
+	random_cv[random CV with splitratio for _cv_ folds]:::C
+	splits_cv[takes each split as test split once]:::D
+
+	cv -- cv=False --> random_or_splits_noncv
+    cv -- cv=True|int --> random_or_splits_cv
+	random_or_splits_noncv -- splitratio=x,y(,z)<br> splitpos=None --> random_noncv
+	random_or_splits_noncv -- splitpos=int<br> devsplits=a,b,... <br> (testsplits=x,y,...) --> splits_noncv
+	random_or_splits_cv -- cv = int <br>splitratio = x,y(,z) <br> splitpos = None --> random_cv
+	random_or_splits_cv -- cv = True <br>splitpos = int--> splits_cv
+    classDef A fill:#1976d2,stroke:#fff,stroke-wwdth:2px,color:#fff,stroke-dasharray: 0;
+    classDef B fill:#cf4a2d,stroke:#fff,stroke-width:2px,color:#fff,stroke-dasharray: 0;
+    classDef C fill:#37da37,stroke:#fff,stroke-width:2px,color:#fff,stroke-dasharray: 0;
+    classDef D fill:#e9ec36,stroke:#fff,stroke-width:2px,color:#fff,stroke-dasharray: 0;
+```
+
+Explained in words, this converges to:
+
+- <span style="color:blue">BLUE</span>: **Training on random splits**. Requirements:
+  - `cv=False` (no cross validation). 
+  - `splitratio=x,y(,z)` (must be 2 or 3 comma-separated integers that sum up to 100)
+  - `splitpos=None`(no custom splits)
+
+  Training on `x`% random samples, evaluation on `y`% random samples. If three integers are given (`x`,`y`,`z`), we also test on `z`% random samples.
+
+- <span style="color:red">RED</span>: **Training on custom splits**. Reuirements:
+  - `cv=False` (no cross validation). 
+  - `splitpos=int`(training on dedicated splits, where `int` is the split denominator in the file)
+  - `devsplits=a,b,...`(splits for validation)
+  - (`testsplits=x,y,...`(if given, splits for testing)
+
+  We validate on all `a,b,...` splits given with `devsplits` and train all other splits. If given, testing is done on the the given `testsplits`. 
+
+- <span style="color:green">GREEN</span>: **Cross validation on random splits**. Requirements:
+  - `cv=int` (number of folds to carry out cross validation). 
+  - `splitratio=x,y(,z)` (must be 2 or 3 comma-separated integers that sum up to 100)
+  - `splitpos=None`(no custom splits)
+
+  Training for `cv` folds on `x`% random samples, evaluation on `y`% random samples. If three integers are given (`x`,`y`,`z`), we also test on `z`% random samples. For all folds, the data gets randomly shuffled.
+
+- <span style="color:yellow">YELLOW</span>: **Cross validation using each custom split as test set**. Requirements:
+  - `cv=True` (activating cross validation). 
+  - `splitpos=int`(training on dedicated splits, where `int` is the split denominator in the file)
+
+  Each split is taken as test set once. The split before it (modulo calculated) will be taken as validation split, all other splits as training data.
+
 
 ### 4) Inference (predicting)
 
