@@ -258,6 +258,8 @@ python saluki.py fine-tune --task classification --configfile exampleconfigs/tok
 
 for classification tasks.
 
+#### Cross validation and data splits
+
 We assist with multiple preconfigured modi how you can configure the training, validation and test splits. We also offer the possibility for automatic cross validation.
 
 To trigger these, you have to fill in these information in the configfile:
