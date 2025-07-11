@@ -267,11 +267,13 @@ To trigger these, you have to fill in these information in the configfile:
 ```yaml
 fine-tuning data source:
   ... # other parameters
-  crossvalidation: False # trigger if cross-validation is desired. If set to `0`, no cross-validation is performed. If set to `True`, cross-validation is performed on the predifined splits in the data file, taking each split as a test set once. If set to an integer `x`, `x`-fold cross-validation is performed on random splits determined by `splitratio`.
+  crossvalidation: False # trigger if cross-validation is desired. If set to `0`, no cross-validation is performed. If set to `True`, cross-validation is performed on the custom splitsets defined in `devsplits` and `testsplits`. If set to an integer `x`, `x`-fold cross-validation is performed on random splits determined by `splitratio`.
   splitratio: False # Comma-seprated list describing the desired split ratio for train, validation and (possibly) test split for both cross-validation and non-cross-validation. Format is `train_percentage/val_percentage(/test_percentage)`, e.g. `85,15` or `70,20,10`. Must sum up to 100 (see default). Given a third splitratio triggers testing on that split. Will be overruled in case `splitpos` parameter is set.
   splitpos: False # int or `False` (if no splits are defined in the data file). `splitpos` will always overrule `splitratio`. Denotes the column in the data file where the split identifier is defined. If set to `True`, the split identifier is expected to be in the first column of the data file, i.e. the first column is expected to contain the split identifier. For non-cross-validation `devsplits` and `testsplits` must be set to use the splits.
-  devsplits: False # a list, e.g. `[1, 2, ..]` to denote the splits that should be used for validation. `splitpos` must be set for this to work.
-  testsplits: False # a list, e.g. `[1, 2, ..]` to denote the splits that should be used for validation. Setting this parameter will trigger testing on these splits. `splitpos` must be set for this to work.
+  devsplits: False # If `crossvalidation=False`: A list, e.g. `[1, 2, ..]` to denote the splits that should be used for validation. `splitpos` must be set for this to work. "
+  # If `crossvalidation=True`: A list of lists, e.g. `[[1,2],[3]]` to denote the splits that should be used for validation in cross-validation.
+  testsplits: False # If `crossvalidation=False`: A list, e.g. `[1, 2, ..]` to denote the splits that should be used for testing. Setting this parameter will trigger testing on these splits. `splitpos` must be set for this to work. "
+  # If `crossvalidation=True`: A list of lists, e.g. `[[1,2],[3]]` to denote the splits that should be used for testing in cross-validation.
 ```
 
 The following graph depicts the four possible scenarios:
@@ -283,14 +285,14 @@ flowchart TD
 	random_noncv[training on x%,<br> eval on y%,<br>if given: test on z%]:::A
 	splits_noncv[uses testplits for testing,<br> devsplits for evaluation,<br> others for training]:::B
 	random_cv[random CV with splitratio for _cv_ folds]:::C
-	splits_cv[takes each split as test split once]:::D
+	splits_cv[CV using the list of lists in _devsplits_, _testsplits_ as folds an dothers for training]:::D
 
 	cv -- cv=False --> random_or_splits_noncv
     cv -- cv=True|int --> random_or_splits_cv
 	random_or_splits_noncv -- splitratio=x,y(,z)<br> splitpos=None --> random_noncv
-	random_or_splits_noncv -- splitpos=int<br> devsplits=a,b,... <br> (testsplits=x,y,...) --> splits_noncv
-	random_or_splits_cv -- cv = int <br>splitratio = x,y(,z) <br> splitpos = None --> random_cv
-	random_or_splits_cv -- cv = True <br>splitpos = int--> splits_cv
+	random_or_splits_noncv -- splitpos=int<br> devsplits=[a,b,...] <br> (testsplits=[x,y,...]) --> splits_noncv
+	random_or_splits_cv -- cv=int <br>splitratio = x,y(,z) <br> splitpos = None --> random_cv
+	random_or_splits_cv -- cv=True <br>splitpos = int <br> devsplits=[[a,b],[c],...] <br> (testsplits=[[x, y], [z],..])--> splits_cv
     classDef A fill:#1976d2,stroke:#fff,stroke-wwdth:2px,color:#fff,stroke-dasharray: 0;
     classDef B fill:#cf4a2d,stroke:#fff,stroke-width:2px,color:#fff,stroke-dasharray: 0;
     classDef C fill:#37da37,stroke:#fff,stroke-width:2px,color:#fff,stroke-dasharray: 0;
@@ -309,8 +311,8 @@ Explained in words, this converges to:
 - <span style="color:red">RED</span>: **Training on custom splits**. Reuirements:
   - `cv=False` (no cross validation). 
   - `splitpos=int`(training on dedicated splits, where `int` is the split denominator in the file)
-  - `devsplits=a,b,...`(splits for validation)
-  - (`testsplits=x,y,...`(if given, splits for testing)
+  - `devsplits=[a,b,...]`(splits for validation)
+  - (`testsplits=[x,y,...]`(if given, splits for testing)
 
   We validate on all `a,b,...` splits given with `devsplits` and train all other splits. If given, testing is done on the the given `testsplits`. 
 
@@ -321,11 +323,13 @@ Explained in words, this converges to:
 
   Training for `cv` folds on `x`% random samples, evaluation on `y`% random samples. If three integers are given (`x`,`y`,`z`), we also test on `z`% random samples. For all folds, the data gets randomly shuffled.
 
-- <span style="color:yellow">YELLOW</span>: **Cross validation using each custom split as test set**. Requirements:
+- <span style="color:yellow">YELLOW</span>: **Cross validation using custom split sets**. Requirements:
   - `cv=True` (activating cross validation). 
   - `splitpos=int`(training on dedicated splits, where `int` is the split denominator in the file)
+  - `devsplits=[[a,b],[c],...]`(splits for validation)
+  - (`testsplits=[[x,y],[z],...]`(if given, splits for testing)
 
-  Each split is taken as test set once. The split before it (modulo calculated) will be taken as validation split, all other splits as training data.
+  Cross validation is performed on the custom split sets. If `testsplits` is set, this triggers testing on these splits. `devsplits` and `testsplits` must have the same length to be zipped.
 
 
 ### 4) Inference (predicting)
