@@ -1,7 +1,7 @@
 #
 # Below is the outputpath where all (model) files are being saved
 #
-outputpath: "test_folder"  # If None, will be set to the file name (without extension)
+outputpath: "test_folder"  # If empty, will be set to the file name (without extension)
 
 #
 # Description of the datasource used for 
@@ -13,7 +13,7 @@ tokenizing and pre-training data source:
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be ",", "|", "\t", ... Denominates the separator token of your file.
   tokensep: ","
-  specifiersep: None
+  specifiersep:
   idpos: 1 # position of the identifier of the column 
   seqpos: 1 # position of the sequence column 
 
@@ -25,7 +25,7 @@ fine-tuning data source:
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
   tokensep: ","
-  specifiersep: None
+  specifiersep:
   idpos: 1 # position of the identifier of the column 
   seqpos: 1 # position of the sequence column 
   labelpos: 1 # position of the label column 
@@ -41,7 +41,7 @@ fine-tuning data source:
 # If you want to tokenize, you only need to specify the following.
 #
 tokenization:
-  samplesize: None # if your data file is to big to learn a tokenizer, you can downsample it
+  samplesize: # if your data file is to big to learn a tokenizer, you can downsample it
   encoding: atomic # DO NOT CHANGE. This is the default encoding of one-hot-encodings for CNN inputs.
   lefttailing: False # If true, the sequences will be cut from the left (begging from the right end).
 

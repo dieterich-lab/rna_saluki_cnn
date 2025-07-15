@@ -1,17 +1,17 @@
 #
 # Below is the outputpath where all (model) files are being saved
 #
-outputpath: "test_folder"  # Where to save predictions / interpretations. If None, will be set to the file name (without extension)
+outputpath: "test_folder"  # Where to save predictions / interpretations. If empty, will be set to the file name (without extension)
 
 inference data source:
   filepath: "data_to_be_predicted_or_to_be_inferred_from.txt"
   stripheader: False # if the custom data file has a header that has to be stripped
   columnsep: "\t" # could be "," "|", "\t" ...
   tokensep: ","
-  specifiersep: None
+  specifiersep:
   idpos: 1 # position of the identifier of the column 
   seqpos: 2 # position of the sequence column 
-  labelpos: 3 # if the file has ground truth labels, this is the position of the label column (else delete or set to `None`)
+  labelpos: 3 # if the file has ground truth labels, this is the position of the label column (else delete or leave empty)
 
 #
 # State the encoding of the pretrained model
@@ -40,7 +40,7 @@ settings:
 #
 looscores:
   handletokens: mask # One of [remove, mask, replace]. This determines how to treat the absence of a token during leave-one-out calculation.
-  replacementdict: None #  # Dict of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`. Must be convertible into a valid python dictionarye,.g.: '{"A": ["a", "c", "g", "t"], "a": ["A", "C", "G", "T"], "AEJ": ["aej", "cej", "gej", "tej"], "aej": ["AEJ", "CEJ", "GEJ", "TEJ"]}'
+  replacementdict: #  # Dict of lists of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`. Must be convertible into a valid python dictionarye,.g.: '{"A": ["a", "c", "g", "t"], "a": ["A", "C", "G", "T"], "AEJ": ["aej", "cej", "gej", "tej"], "aej": ["AEJ", "CEJ", "GEJ", "TEJ"]}'
   replacespecifier: False # WIP! If `True` and `handletokens` is set to `replace`, modified tokens (i.e. "a#0.7") will also be replaced against an unmodified version. 
 
 #
