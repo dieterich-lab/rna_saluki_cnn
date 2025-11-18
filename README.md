@@ -12,7 +12,8 @@ A high-performance deep learning framework for RNA sequence analysis using convo
 ### Installation
 
 ```bash
-git clone --recurse-submodules https://github.com/dieterich-lab/rna_saluki_cnn.git
+# Clone the repository (biolm_utils is now included as a subtree)
+git clone https://github.com/dieterich-lab/rna_saluki_cnn.git
 cd rna_saluki_cnn
 python3 -m venv ~/.venvs/rna_saluki
 source ~/.venvs/rna_saluki/bin/activate
@@ -21,6 +22,26 @@ pipenv install
 ```
 
 **Requirements:** Python 3.8+, PyTorch, CUDA (optional for GPU acceleration)
+
+Optional: keep the included `biolm_utils` subtree up-to-date with upstream
+
+ 
+```bash
+# add upstream (only once, if missing)
+git remote add biolm_upstream https://github.com/dieterich-lab/biolm_utils.git || true
+# pull latest from upstream into the subtree
+git fetch biolm_upstream
+git subtree pull --prefix=biolm_utils biolm_upstream main --squash
+```
+
+
+If you make changes in `biolm_utils` locally and want to push them upstream (you need write access to upstream), use:
+
+ 
+```bash
+git subtree push --prefix=biolm_utils biolm_upstream main
+```
+
 
 **GPU Configuration:**
 
