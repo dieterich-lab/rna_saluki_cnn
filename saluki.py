@@ -3,7 +3,19 @@ import sys
 # Minimal help quick-exit placed before heavy imports so `python saluki.py --help`
 # behaves as a lightweight CLI help producer without importing large libs.
 if "--help" in sys.argv or "-h" in sys.argv:
-    print("usage: saluki.py <mode> [--help] [--filepath PATH] [other options]")
+    # Delegate to the framework's help (hydra-backed) so callers receive
+    # full, accurate help text from biolm_utils rather than a tiny stub.
+    try:
+        # parse_args is hydra.main-decorated and will print help and exit if
+        # '-h'/'--help' is present.
+        from biolm_utils.params import parse_args
+
+        parse_args()
+    except SystemExit:
+        # Hydra/argparse will call sys.exit after printing help; convert to
+        # a clean exit here.
+        sys.exit(0)
+    # Fallback: if parse_args returns, exit to avoid running main.
     sys.exit(0)
 
 from transformers import BertConfig, DefaultDataCollator, PreTrainedTokenizerFast
