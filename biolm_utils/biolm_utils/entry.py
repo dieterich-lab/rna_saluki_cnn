@@ -31,7 +31,7 @@ OUTPUTPATH = Path(args.outputpath)
 OUTPUTPATH.mkdir(parents=True, exist_ok=True)
 
 TOKENIZERFILE = OUTPUTPATH / "tokenizer.json"
-MODELLOADPATH: Optional[Path]
+from biolm_utils.params import load_config, get_detected_ngpus
 if args.mode == "fine-tune":
     MODELLOADPATH = OUTPUTPATH / "pre-train"
 elif args.mode in ["interpret", "predict"]:
@@ -103,7 +103,9 @@ logging.basicConfig(
 if args.dev:
     GRADACC = 1
 else:
-    GRADACC = args.gradacc / args.ngpus
+    # Use the auto-detected GPU count (or 1 when CPU) instead of the removed `args.ngpus`.
+    detected_gpus = getattr(args, "detected_ngpus", 1)
+    GRADACC = args.gradacc / detected_gpus
     logging.info(f"Set gradient accumulation to {GRADACC}.")
 
 # Log the arguments.
@@ -127,7 +129,7 @@ CLASSIFICATIONTRAINER_CLS = WeightedSamplingTrainer
 MLMTRAINER_CLS = Trainer
 
 METRIC = (
-    compute_metrics_for_classification
+     detected_gpus = get_detected_ngpus(args)
     if args.task == "classification"
     else compute_metrics_for_regression
 )

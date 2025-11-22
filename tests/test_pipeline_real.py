@@ -9,7 +9,8 @@ import pytest
 import torch
 from transformers import BertConfig, DefaultDataCollator, PreTrainedTokenizerFast
 
-from biolm_utils.config import Config, set_config
+from biolm_utils.config import Config
+from biolm_utils.plugin_registry import apply_plugin, register_plugin
 from rna_cnn_dataset import RNACNNDataset
 from rna_cnn_models import HFSaluki
 
@@ -31,7 +32,9 @@ def _set_saluki_config():
         False,
         RNACNNDataset,
     ]
-    set_config(Config(*params))
+    # register a test-specific saluki plugin and apply it
+    register_plugin("saluki_test", lambda: Config(*params))
+    apply_plugin("saluki_test")
 
 
 @pytest.mark.slow

@@ -220,7 +220,7 @@ We also have to clarify data pre-processing and environment options:
 data pre-processing:
   centertoken: False # either False or a token/character on which the sequence will be centered
 environment:
-  ngpus: 1 # [1, 2, 4]
+  detected_ngpus: (auto-detected)  # Auto-detected; powers of two only (1,2,4,...)
 ```
 
 The `data processing` attributes refer to specific pre-processing options that are in detail explained by the command line help.

@@ -24,6 +24,7 @@ from biolm_utils.entry import (
     args,
 )
 from biolm_utils.interpret import loo_scores
+from biolm_utils.params import get_detected_ngpus
 from biolm_utils.train_tokenizer import tokenize
 from biolm_utils.train_utils import (
     create_reports,
@@ -116,7 +117,7 @@ def _build_training_args(model_save_path, val_dataset, config):
         remove_unused_columns=False,
         dataloader_drop_last=True,
         label_names=["labels"],
-        learning_rate=config.LEARNINGRATE,
+        learning_rate=config.learning_rate,
         max_grad_norm=config.MAX_GRAD_NORM,
         weight_decay=config.WEIGHT_DECAY,
         save_safetensors=False,
@@ -126,12 +127,13 @@ def _build_training_args(model_save_path, val_dataset, config):
 
 def _build_test_args(model_load_path, test_dataset):
     """Builds the TrainingArguments for testing/prediction."""
-    if args.ngpus > 1:
+    detected_gpus = get_detected_ngpus(args)
+    if detected_gpus > 1:
         logging.warning(
             "Running inference on %d GPUs. This may drop samples if "
             "the dataset size is not divisible by the batch size. "
             "Consider using a single GPU for complete evaluation.",
-            args.ngpus,
+            detected_gpus,
         )
 
     test_batch_size = min(args.batchsize, len(test_dataset))
@@ -141,7 +143,7 @@ def _build_test_args(model_load_path, test_dataset):
         do_train=False,
         do_predict=True,
         per_device_eval_batch_size=test_batch_size,
-        dataloader_drop_last=args.ngpus > 1,
+        dataloader_drop_last=detected_gpus > 1,
         log_level="critical" if args.silent else "info",
         disable_tqdm=True,
         remove_unused_columns=False,

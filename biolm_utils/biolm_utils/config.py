@@ -15,7 +15,7 @@ class Config:
     MODEL_CLS_FOR_PRETRAINING: PreTrainedModel  # 0
     MODEL_CLS_FOR_FINETUNING: PreTrainedModel  # 1
     TOKENIZER_CLS: XLNetTokenizerFast  # 2
-    LEARNINGRATE: float  # 4
+    learning_rate: float  # 4
     MAX_GRAD_NORM: float  # 5
     WEIGHT_DECAY: float  # 6
     SPECIAL_TOKENIZER_FOR_TRAINER_CLS: ImageProcessingMixin  # 7

@@ -154,11 +154,27 @@ class HFSaluki(PreTrainedModel):
 
     @staticmethod
     def get_config(args, config_cls, tokenizer, dataset, nlabels):
+        # Saluki enforces a fixed model sequence length for the CNN+RNN architecture.
+        # Do not rely on callers to pass this via configs — set it explicitly here.
+        SALUKI_BLOCKSIZE = 12288
+        # Defensive check: if args attempts to set a different blocksize, raise.
+        if getattr(args, "blocksize", None) not in (None, SALUKI_BLOCKSIZE):
+            raise ValueError(
+                f"Saluki requires blocksize={SALUKI_BLOCKSIZE}; do not set a different blocksize in global config."
+            )
+
         config = config_cls(
             vocab_size=len(tokenizer),
-            max_position_embeddings=args.blocksize,
+            max_position_embeddings=SALUKI_BLOCKSIZE,
             pad_token_id=tokenizer.pad_token_id,
         )
-        config.input_size = dataset.OHE.categories_[0].size + dataset.nspecs
+        # Some tests use simple objects like `range` for categories_; handle
+        # both numpy-like arrays (with `.size`) and generic iterables via len().
+        cat0 = dataset.OHE.categories_[0]
+        try:
+            cat_size = cat0.size
+        except Exception:
+            cat_size = len(cat0)
+        config.input_size = cat_size + dataset.nspecs
         config.num_labels = nlabels
         return config
