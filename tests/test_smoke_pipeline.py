@@ -9,10 +9,15 @@ import pytest
 
 def test_help_message_runs():
     """Check that the main script runs and prints help."""
+    repo_root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    # make the bundled subtree importable when running the script from tests
+    env["PYTHONPATH"] = str(repo_root)
     result = subprocess.run(
         [sys.executable, "saluki.py", "tokenize", "--help"],
         capture_output=True,
-        cwd=str(Path(__file__).resolve().parents[1]),
+        cwd=str(repo_root),
+        env=env,
     )
     assert result.returncode == 0
     assert b"usage" in result.stdout.lower()
