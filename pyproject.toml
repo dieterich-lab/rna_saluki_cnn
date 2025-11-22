@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "rna_saluki_cnn"
+version = "0.1.0"
+description = "Saluki CNN models and tools for RNA sequence analysis (development)."
+authors = ["dieterich-lab <noreply@example.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
+# use the local subtree as an editable dependency — this ensures a single, top-level
+# Poetry workflow installs the `biolm_utils` project from the bundled subtree.
+biolm_utils = { path = "biolm_utils", develop = true }
+
+[tool.poetry.group.mlflow]
+description = "Optional MLflow extras used for experiment tracking and demos"
+
+[tool.poetry.group.mlflow.dependencies]
+mlflow = "*"
+
+[tool.poetry.dev-dependencies]
+pytest = "*"
+debugpy = "*"
+torch-tb-profiler = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
