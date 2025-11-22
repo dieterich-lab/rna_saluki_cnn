@@ -37,10 +37,7 @@ class RNABaseDataset(Dataset):
                 lines = lines[1:]
 
         # We'll save the original input data lines for later reference.
-        if args.dev:
-            self.lines = lines[: args.dev]
-        else:
-            self.lines = lines
+        self.lines = lines
         self.seq_idx = [
             x.split(args.columnsep)[args.idpos - 1].strip('"') for x in self.lines
         ]
@@ -53,7 +50,7 @@ class RNABaseDataset(Dataset):
 
         # Normalize and pre-trokenize to obtain the sequences.
         normalized_seqs = [
-            tokenizer.backend_tokenizer.normalizer.normalize_str(x) for x in self.lines
+            tokenizer.backend_tokenizer.normalizer.normalize_str(x) for x in lines
         ]
 
         logging.info("Normalizing sequences finished.")
@@ -81,7 +78,7 @@ class RNABaseDataset(Dataset):
                 )
             spec_normalized_seqs = [
                 spec_tokenizer.backend_tokenizer.normalizer.normalize_str(x)
-                for x in self.lines
+                for x in lines
             ]
             spec_pre_tokenized_seqs = [
                 spec_tokenizer.backend_tokenizer.pre_tokenizer.pre_tokenize_str(x)[0][0]
@@ -353,58 +350,3 @@ class RNABaseDataset(Dataset):
 
     def __getitem__(example):
         raise NotImplementedError
-
-    # def __getitem__(self, i):
-    #     example = self.examples[i].copy()
-    #     example["input_ids"] = torch.tensor(example["input_ids"], dtype=torch.long)
-    #     return example
-
-
-# class RNACNNDataset(RNABaseDataset):
-#     def __init__(self, **args):
-#         super().__init__(**args)
-#         # Define a one-hot encoder
-#         non_special_vocab = [
-#             v
-#             for k, v in self.tokenizer.vocab.items()
-#             if k not in self.tokenizer.special_tokens_map.values()
-#         ]
-#         self.OHE = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
-#         self.OHE.fit([[x] for x in non_special_vocab])
-
-#         # _examples = list()
-#         # for i, example in enumerate(self.examples.copy()):
-#         #     example["input_ids"] = self.OHE.transform(
-#         #         np.reshape(example["input_ids"], (-1, 1))
-#         #     )
-#         #     if self.args.specifiersep is not None:
-#         #         spec = self.specs[i]
-#         #         example["input_ids"] = np.concatenate(
-#         #             (example["input_ids"], spec), axis=1
-#         #         )
-#         #     _examples.append(example)
-#         # self.examples = _examples
-
-#     # def __getitem__(self, i):
-#     #     example = self.examples[i].copy()
-#     #     example["input_ids"] = torch.tensor(example["input_ids"], dtype=torch.long)
-#     #     return example
-
-#     def __getitem__(self, i):
-#         example = self.examples[i].copy()
-#         example["input_ids"] = self.OHE.transform(
-#             np.reshape(example["input_ids"], (-1, 1))
-#         )
-#         if self.args.specifiersep is not None:
-#             spec = self.specs[i]
-#             example["input_ids"] = np.concatenate((example["input_ids"], spec), axis=1)
-#         example["input_ids"] = torch.tensor(example["input_ids"], dtype=torch.float)
-#         return example
-
-
-# class RNALanguageDataset(RNABaseDataset):
-
-#     def __getitem__(self, i):
-#         example = self.examples[i].copy()
-#         example["input_ids"] = torch.tensor(example["input_ids"], dtype=torch.long)
-#         return example

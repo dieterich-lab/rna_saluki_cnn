@@ -127,13 +127,22 @@ def _build_training_args(model_save_path, val_dataset, config):
 
 def _build_test_args(model_load_path, test_dataset):
     """Builds the TrainingArguments for testing/prediction."""
+<<<<<<< HEAD
     detected_gpus = get_detected_ngpus(args)
     if detected_gpus > 1:
+=======
+    detected_gpus = get_detected_ngpus(args)
+    if detected_gpus > 1:
+>>>>>>> a13805217e2894eb9adcda5bd95ba5340cb8e9d2
         logging.warning(
             "Running inference on %d GPUs. This may drop samples if "
             "the dataset size is not divisible by the batch size. "
             "Consider using a single GPU for complete evaluation.",
+<<<<<<< HEAD
             detected_gpus,
+=======
+            ngpus,
+>>>>>>> a13805217e2894eb9adcda5bd95ba5340cb8e9d2
         )
 
     test_batch_size = min(args.batchsize, len(test_dataset))
