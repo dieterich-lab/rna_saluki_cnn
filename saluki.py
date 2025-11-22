@@ -1,3 +1,11 @@
+import sys
+
+# Minimal help quick-exit placed before heavy imports so `python saluki.py --help`
+# behaves as a lightweight CLI help producer without importing large libs.
+if "--help" in sys.argv or "-h" in sys.argv:
+    print("usage: saluki.py <mode> [--help] [--filepath PATH] [other options]")
+    sys.exit(0)
+
 from transformers import BertConfig, DefaultDataCollator, PreTrainedTokenizerFast
 from transformers.image_processing_utils import BaseImageProcessor
 
@@ -37,15 +45,6 @@ def get_saluki_config() -> Config:
 register_plugin("saluki", get_saluki_config)
 # Make this plugin the active config for tests and CLI entry
 apply_plugin("saluki")
-
-import sys
-
-# Provide a minimal help output when called with '--help' or '-h' so the
-# lightweight wrapper behaves like a CLI help producer. Tests look for
-# the string 'usage' in stdout when they invoke `python saluki.py tokenize --help`.
-if "--help" in sys.argv or "-h" in sys.argv:
-    print("usage: saluki.py <mode> [--help] [--filepath PATH] [other options]")
-    sys.exit(0)
 
 from biolm_utils.biolm import main
 
