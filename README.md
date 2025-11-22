@@ -9,23 +9,31 @@ A high-performance deep learning framework for RNA sequence analysis using convo
 
 ## Quick Start
 
-### Installation
+### Installation (Poetry — single-step setup)
+
+This repository now includes a top-level Poetry project. The `biolm_utils` library
+is bundled as a local subtree and is declared as a path dependency in `pyproject.toml`.
+This makes a single Poetry command enough to set up both the Saluki project and the
+editable `biolm_utils` subtree for development.
+
+From the repository root:
 
 ```bash
-# Clone the repository (biolm_utils is now included as a subtree)
-git clone https://github.com/dieterich-lab/rna_saluki_cnn.git
-cd rna_saluki_cnn
+# optional: tell Poetry which Python interpreter to use
+poetry env use $(which python)
 
-# Recommended: use Poetry for reproducible environments
+# install runtime and dev dependencies
 poetry install
-# If you want the optional MLflow extras:
-poetry install --with mlflow
 
-# Alternatively, create a virtualenv manually and use pip:
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# to include MLflow and MLflow-related extras for demos and experiment tracking
+poetry install --with mlflow
 ```
+
+Notes:
+- The `biolm_utils` subtree is installed in editable/develop mode so changes in
+    `biolm_utils/` are available right away while developing the top-level project.
+- If you don't want Poetry, the repo still supports manual virtualenv+pip workflows; use
+    `python -m venv .venv` and `python -m pip install -e biolm_utils` as an alternative.
 
 **Requirements:** Python 3.8+, PyTorch, CUDA (optional for GPU acceleration)
 
