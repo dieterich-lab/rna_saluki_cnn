@@ -15,25 +15,81 @@ A high-performance deep learning framework for RNA sequence analysis using convo
 # Clone the repository (biolm_utils is now included as a subtree)
 git clone https://github.com/dieterich-lab/rna_saluki_cnn.git
 cd rna_saluki_cnn
-python3 -m venv ~/.venvs/rna_saluki
-source ~/.venvs/rna_saluki/bin/activate
-pip install pipenv
-pipenv install
+
+# Recommended: use Poetry for reproducible environments
+poetry install
+# If you want the optional MLflow extras:
+poetry install --with mlflow
+
+# Alternatively, create a virtualenv manually and use pip:
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 **Requirements:** Python 3.8+, PyTorch, CUDA (optional for GPU acceleration)
 
 Optional: keep the included `biolm_utils` subtree up-to-date with upstream
+Optional: keep the included `biolm_utils` subtree up-to-date with upstream
 
- 
+### Keeping `biolm_utils` up-to-date (optional)
+If you use the included `biolm_utils` subtree and want to pull the latest changes from upstream, use the following steps:
+
 ```bash
 # add upstream (only once, if missing)
 git remote add biolm_upstream https://github.com/dieterich-lab/biolm_utils.git || true
-# pull latest from upstream into the subtree
+# fetch latest changes
 git fetch biolm_upstream
+# pull latest from upstream into the subtree
 git subtree pull --prefix=biolm_utils biolm_upstream main --squash
 ```
 
+### GPU selection
+GPU usage is auto-configured by the framework. When `debugging.accelerator=gpu` (the default), the system will auto-detect the number of available GPUs and apply a restriction that results in a power-of-two count (1, 2, 4, 8, ...).
+
+- The runtime GPU count is always auto-detected and placed into `debugging.detected_ngpus` in the final namespace returned by `load_config()`.
+- Do not attempt to set explicit GPU counts via `settings.environment.ngpus` or `debugging.ngpus`—these legacy keys are no longer supported and will raise an error.
+
+If you need to explicitly force CPU usage, set `debugging.accelerator=cpu` to run on CPU only.
+
+
+### Saluki-specific invariants (important)
+Saluki relies on a couple of hard-coded design invariants that must not be changed in global configs or example YAMLs. These invariants are baked into the Saluki plugin implementation to ensure all downstream code and any future plugins built on top of Saluki use identical base assumptions:
+
+- tokenization.encoding: MUST be `atomic` (one-hot encoding). Saluki expects one-hot inputs for the CNN layer; other encodings are not supported.
+- training.blocksize: MUST be `12288` (the fixed model sequence length). This is a model architectural choice used to set tokenizer/model max lengths and is enforced by the plugin.
+
+If one of these values is set differently, the code will fail early with a clear error explaining that Saluki enforces these values internally. Programmatic enforcement lives inside the plugin's dataset and model helper code so plugin authors don't need to duplicate checks.
+
+Tests were added to `tests/test_saluki_invariants.py` to verify these behaviors.
+
+Testing locally
+-----------------
+To run the Saluki-specific unit tests locally, install the development dependencies and run pytest from the project root:
+
+```bash
+# from the repo root
+cd rna_saluki_cnn
+
+# if you used Poetry
+poetry install
+poetry run pytest -q tests/test_saluki_invariants.py
+
+# or, if you created a virtualenv manually
+# source .venv/bin/activate
+# pytest -q tests/test_saluki_invariants.py
+```
+
+#### Breaking change: explicit GPU counts removed
+
+The legacy `ngpus` option has been removed (e.g., `settings.environment.ngpus` or `debugging.ngpus`). The runtime GPU count is now auto-detected and populated in `debugging.detected_ngpus`.
+
+To read the auto-detected value programmatically from Python:
+
+```python
+from biolm_utils.params import get_detected_ngpus
+detected = get_detected_ngpus(args)
+```
 
 If you make changes in `biolm_utils` locally and want to push them upstream (you need write access to upstream), use:
 
@@ -63,7 +119,7 @@ python saluki.py mode=tokenize data_source.filepath=my_sequences.txt
 python saluki.py mode=fine-tune task=regression \
     data_source.filepath=my_training_data.txt \
     data_source.splitratio=[80,10,10] \
-    training.learningrate=0.001
+    training.learning_rate=0.001
 
 # Train with a file that has a header row
 python saluki.py mode=fine-tune task=regression \
@@ -154,7 +210,7 @@ For complex setups, create YAML config files and override specific parameters:
 ```bash
 python saluki.py --config-path configs --config-name my_config \
     data_source.filepath=new_data.txt \
-    training.learningrate=0.0005
+    training.learning_rate=0.0005
 ```
 
 ### Cross-Validation
@@ -248,7 +304,7 @@ experiment_output/
 
 ### Training Parameters
 
-- `training.learningrate`: Learning rate (default: 0.001)
+- `training.learning_rate`: Learning rate (default: 0.001)
 - `training.batchsize`: Batch size for training
 - `training.nepochs`: Number of training epochs
 - `training.patience`: Early stopping patience
@@ -311,9 +367,9 @@ python saluki.py mode=fine-tune task=regression \
     debugging.forcenewdata=true \
     data_source.filepath=data.txt
 
-# Specify number of GPUs to use (auto-detected by default)
+# Force GPU or CPU selection
 python saluki.py mode=fine-tune task=regression \
-    debugging.ngpus=2 \
+    debugging.accelerator=gpu \
     data_source.filepath=data.txt
 ```
 
@@ -322,8 +378,8 @@ python saluki.py mode=fine-tune task=regression \
 - `debugging.dev`: Use only N samples for quick testing (default: false)
 - `debugging.silent`: Reduce logging verbosity (default: false)
 - `debugging.forcenewdata`: Force dataset recreation even if cached (default: false)
-- `debugging.ngpus`: Number of GPUs to use (auto-detected, default: 1)
 - `debugging.accelerator`: Hardware accelerator ("gpu" or "cpu", default: "gpu")
+    Note: GPU count is auto-detected and restricted to powers-of-two; the detected value is available at `debugging.detected_ngpus`. Do not set GPU counts explicitly in configs; prefer `debugging.detected_ngpus`.
 
 ### Getting Support
 
