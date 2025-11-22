@@ -13,16 +13,62 @@ In detail, the following steps are implemented:
 
 ## Installation
 
-First clone the repo and cd into it. Then, we recommend to create a dedicated environment ([python venv](https://docs.python.org/3/library/venv.html)) for the project. Now, you install the project via the [pyproject](./pyproject.toml) file. Summarising, excute the following steps:
 
 ```bash
 git clone https://github.com/dieterich-lab/biolm_utils.git
 cd biolm_utils
-python3 -m venv biolm 
-. biolm/bin/activate
-pip install pipenv
-pipenv install
+
+# Recommended: use Poetry for reproducible environments
+poetry install
 ```
+We now recommend using Poetry for reproducible environments. If you haven't installed Poetry, follow the instructions at https://python-poetry.org.
+
+Quick setup using Poetry (recommended):
+
+```bash
+git clone https://github.com/dieterich-lab/biolm_utils.git
+cd biolm_utils
+# (optional) use a specific Python interpreter
+poetry env use $(which python)
+poetry install
+poetry run pytest -q
+```
+
+Notes:
+- The project ships `pyproject.toml`. Adding a `poetry.lock` into the repo will
+  make installs fully reproducible across machines and CI. CI now supports a
+  Poetry-based workflow (`.github/workflows/poetry-tests.yml`).
+
+If you'd like to use MLflow locally for experiments or demos, install the optional
+MLflow group via Poetry (supported in modern Poetry versions) with:
+
+```bash
+poetry install --with mlflow
+```
+
+If your Poetry version does not support groups/extras you can still use pip to
+install MLflow into the project's virtual environment (generic example):
+
+```bash
+# install into the project's venv (run from the project root or your active venv)
+python -m pip install mlflow
+```
+
+Migration note (Pipfile -> Poetry)
+----------------------------------
+
+This project previously used a Pipfile / Pipenv workflow. The recommended path
+forward is Poetry (pyproject.toml + poetry.lock). To migrate existing environments
+or CI from Pipenv, initialize a Poetry project in the repo root and generate a
+lockfile:
+
+```bash
+poetry init --no-interaction
+poetry lock
+```
+
+Once you've validated that Poetry works for your workflow you can remove the
+legacy `Pipfile` and `Pipfile.lock` files.
 
 ## File structure
 
@@ -30,7 +76,7 @@ pipenv install
 ├── biolm_utils
 │   ├── biolm.py # Main script for tokenizing, training, testing and predicting and loo sores.
 │   ├── config.py # Config class that needs to be initalized by plugings .
-│   ├── cross_validation.py # Rontaining the wrapper that manages fine-tuning on different splits.
+│   ├── cross_validation.py # Contains the newer `CrossValidator` orchestration. A compatibility shim `parametrized_decorator` remains but is deprecated (see `DEPRECATE_PARAMETRIZED_DECORATOR.md`).
 │   ├── entry.py # After params.py, this is the main entry point of the program, fixing paths and global variables .
 │   ├── __init__.py
 │   ├── interpret.py # Script controlling the loo score calculation.
@@ -43,6 +89,12 @@ pipenv install
 ├── pyproject.toml
 └── README.md
 ```
+
+## Documentation & teaching guides
+
+- The project contains a short pedagogical guide covering the framework internals and how to write a compatible plugin (example: Saluki):
+  - DOCS/framework_and_saluki_plugin_guide.md
+
 
 ## Pathing
 
@@ -220,12 +272,138 @@ We also have to clarify data pre-processing and environment options:
 data pre-processing:
   centertoken: False # either False or a token/character on which the sequence will be centered
 environment:
-  ngpus: 1 # [1, 2, 4]
+  detected_ngpus: (auto-detected)  # Auto-detected; powers of two only (1,2,4,...)
+
+BREAKING CHANGE: explicit GPU counts removed
+------------------------------------------------
+Note: The legacy `ngpus` option in `settings.environment` and `debugging.ngpus` has been removed. GPU counts are now auto-detected and exposed at `debugging.detected_ngpus` in the final `Namespace` returned by `load_config()`.
+ - Do not set `settings.environment.ngpus` or `debugging.ngpus` in your config YAMLs; they raise a ValueError.
+ - Programmatic access: use `from biolm_utils.params import get_detected_ngpus` and call `get_detected_ngpus(args)`.
+ - Example: `detected = get_detected_ngpus(args)`.
 ```
 
 The `data processing` attributes refer to specific pre-processing options that are in detail explained by the command line help.
 
-Under `environment`, you can decide if you want to train on GPU or CPU and on how many GPUs you want to train. We allow to train on 1, 2 or 4 GPUs as this even number will be offset against the `gradacc` (gradient accumulation) option to preserve a fixed effective batch size.
+### Programmatic orchestration (train/dev/test runs with cross-validation)
+
+If you want to orchestrate runs from other Python code (for example, to integrate
+the library into a higher-level workflow or test harness) prefer the explicit
+helpers introduced in the refactor: `make_run_fn`, `CrossValidator` and
+`Paths`. These are easier to unit-test and avoid mutating global state.
+
+Example (high-level):
+
+```py
+from types import SimpleNamespace
+
+from biolm_utils.config import get_config
+from biolm_utils.params import load_config
+from biolm_utils.train_tokenizer import tokenize
+from biolm_utils.train_utils import get_tokenizer, get_dataset
+from biolm_utils.runner import make_run_fn
+from biolm_utils.cross_validation import CrossValidator
+from biolm_utils.paths import Paths
+
+# Load your config / args (same objects used by the CLI)
+config = get_config()
+args = load_config()
+
+# Prepare tokenizer / datasets as usual
+tokenizer = get_tokenizer(args, /* TOKENIZERFILE */, config.TOKENIZER_CLS, config.PRETRAINING_REQUIRED)
+tokenizer_for_trainer = tokenizer
+full_dataset = get_dataset(args, tokenizer, config.ADD_SPECIAL_TOKENS, /* DATASETFILE */, config.DATASET_CLS)
+
+# Build the per-run callable (identical signature as legacy nested `run`):
+run_once = make_run_fn(args, config, tokenizer, tokenizer_for_trainer, full_dataset)
+
+# Create immutable per-run paths (these values come from biolm_utils.entry in the CLI)
+base_paths = Paths(
+  model_load_path=/* MODELLOADPATH */,
+  model_save_path=/* MODELSAVEPATH */,
+  output_path=/* OUTPUTPATH */,
+  report_file=/* REPORTFILE */,
+  rank_file=/* RANKFILE */,
+)
+
+# Instantiate CrossValidator and run the selected mode: fine-tune, predict, interpret, pre-train
+cv = CrossValidator(params=args, dataset=full_dataset, run_once_fn=run_once, base_paths=base_paths)
+result = cv.execute()
+
+# `result` contains per-mode semantics (list of fold results for cross-validation, or a single value for predict)
+```
+
+Notes & migration
+- `run_once` keeps the original signature used by the old decorator: run(train, val, test, model_load, model_save, report, rank)
+- The old `@parametrized_decorator` wrapper is still available for backward compatibility but is deprecated — prefer the `CrossValidator` + `make_run_fn` flow above.
+
+### Cross-validation behaviour and pitfalls
+
+Cross-validation configuration can be a little subtle — here are the rules and gotchas so you get deterministic, predictable behavior.
+
+- `data_source.crossvalidation` accepts three kinds of values:
+  - `null` / `0` / `False` (default) — no cross-validation. The code will either use `splitpos` + `devsplits` (deterministic splits) when provided, or a single random split when `splitratio` is specified.
+  - `true` — *use predefined splits*. This requires `splitpos` to be set and `devsplits` (a list of split ids — and optionally `testsplits`) to be provided in your config or dataset file. This runs one pass per entry in `devsplits` (and `testsplits` if set) deterministically.
+  - integer >= 2 — *random k-fold cross-validation* (k-fold). This performs k independent shuffled runs and requires `splitratio` (e.g., `[80,10,10]` or `[80,20]`) to determine train/val/(test) percentages. Note: `crossvalidation=1` is not allowed because it is ambiguous.
+
+Pitfalls to avoid:
+- `crossvalidation=true` without `splitpos` is ambiguous and will now raise an error — either provide `splitpos` (and `devsplits`) or set `crossvalidation` to a positive integer >= 2 and a `splitratio`.
+- `crossvalidation` as an integer while `splitpos` is present is conflicting — numeric crossvalidation implies random splits and therefore conflicts with predefined split positions; prefer `crossvalidation=true` for predefined splits.
+- `splitpos` set without `devsplits` is invalid — you must provide `devsplits` (and optionally `testsplits`) to define which splits are used for validation/testing.
+
+Example YAML snippets:
+
+1) Predefined splits (one deterministic CV run per entry of devsplits):
+
+```yaml
+data_source:
+  splitpos: 3
+  devsplits: [[1], [2]]  # list-of-lists: each tuple defines dev/test groupings
+  testsplits: [[3], [4]] # optional
+  crossvalidation: true
+```
+
+2) Random 5-fold cross-validation with 80/10/10 train/val/test:
+
+```yaml
+data_source:
+  crossvalidation: 5
+  splitratio: [80, 10, 10]
+```
+
+3) No CV (single run): deterministic with splits or a single random split
+
+```yaml
+data_source:
+  crossvalidation: 0
+  splitpos: 1
+  devsplits: [2]
+```
+
+The library also validates these combinations early — invalid or ambiguous settings will raise a helpful error explaining the expected fix.
+
+Automatic migration helper
+
+To help migrate older configs that may use ambiguous forms, we've added a small helper in `biolm_utils.cfg_migration`:
+
+- `analyze_crossvalidation(params)` — returns human-readable notes about ambiguous or problematic settings.
+- `migrate_crossvalidation(params, auto_apply=False)` — returns a copy of `params` and recommended fixes; with `auto_apply=True` it will apply safe conversions (e.g. `0 -> False`, `True + splitratio -> convert to default k-fold`).
+
+Usage example:
+
+```py
+from biolm_utils.cfg_migration import analyze_crossvalidation, migrate_crossvalidation
+
+# analyze
+notes = analyze_crossvalidation(args)
+for n in notes:
+  print("TODO:", n)
+
+# apply safe migrations
+new_args, applied_notes = migrate_crossvalidation(args, auto_apply=True)
+```
+
+
+Under `environment`, you can decide if you want to train on GPU or CPU and on how many GPUs you want to train. GPU count is auto-detected and restricted to powers-of-two values (1, 2, 4, 8...).
 
 ### Extract LOO-scores for a model
 

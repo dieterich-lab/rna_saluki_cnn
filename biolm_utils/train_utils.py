@@ -92,115 +92,98 @@ def compute_metrics_for_classification(dataset, savepath):
 
 def get_tokenizer(args, tokenizer_file, tokenizer_cls, pretraining_required):
 
-    if args.mode == "pre-train" or (
-        args.mode == "fine-tune" and not pretraining_required
-    ):
-        mask_token = "[MASK]"
-        pad_token = "[PAD]"
-        cls_token = "[CLS]"
-        unk_token = "[UNK]"
-        sep_token = "[SEP]"
-        eos_token = "[EOS]"
-        bos_token = "[BOS]"
-        trunc_side = "left" if not args.lefttailing else "right"
-        model_max_len = args.blocksize
-
-    else:
-        # elif args.mode == "fine-tune":
+    # if args.pretrainedmodel or (args.mode == "fine-tune" and pretraining_required):
+    if args.mode == "fine-tune" and pretraining_required:
         tokenizer_config_file = (
             tokenizer_file.parent / "pre-train" / "tokenizer_config.json"
         )
         # else:
         #     tokenizer_config_file = tokenizer_file.parent / "tokenizer_config.json"
-
-        if pretraining_required:
-            with open(
-                tokenizer_config_file,
-                "r",
-            ) as ff:
-                tok_config = json.load(ff)
-                trunc_side = tok_config["truncation_side"]
-                model_max_len = tok_config["model_max_length"]
-                cls_token = tok_config["cls_token"]
-                unk_token = tok_config["unk_token"]
-                mask_token = tok_config["mask_token"]
-                pad_token = tok_config["pad_token"]
-                sep_token = tok_config["sep_token"]
-                eos_token = tok_config["eos_token"]
-                bos_token = tok_config["bos_token"]
-            logger.info(
-                f"Loaded tokenizer config from {tokenizer_file.parent / 'tokenizer_config.json'} and setting it to {model_max_len} model max length"
-            )
+        with open(
+            tokenizer_config_file,
+            "r",
+        ) as ff:
+            tok_config = json.load(ff)
+            trunc_side = tok_config["truncation_side"]
+            model_max_len = tok_config["model_max_length"]
+            cls_token = tok_config["cls_token"]
+            unk_token = tok_config["unk_token"]
+            mask_token = tok_config["mask_token"]
+            pad_token = tok_config["pad_token"]
+            sep_token = tok_config["sep_token"]
+            eos_token = tok_config["eos_token"]
+            bos_token = tok_config["bos_token"]
+        logger.info(
+            f"Loaded tokenizer config from {tokenizer_file.parent / 'tokenizer_config.json'} and setting it to {model_max_len} model max length"
+        )
+        with open(tokenizer_file, "r") as f:
+            tokenizer_json = json.load(f)
         # Remove the meta data left and right correctly
         # [1] and [2] refer to the position where the sequence is isolated by means of the `columnsep`
-
-    with open(tokenizer_file, "r") as f:
-        tokenizer_json = json.load(f)
-
-    tokenizer_json["pre_tokenizer"]["pretokenizers"][1]["pattern"][
-        "Regex"
-    ] = f"([^{args.columnsep}]*{args.columnsep}){{{int(args.seqpos) - 1}}}"
-    tokenizer_json["pre_tokenizer"]["pretokenizers"][2]["pattern"][
-        "Regex"
-    ] = f"{args.columnsep}.*"
-    if args.tokensep is not None:
-        # Last position (-1) is for stripping the quotation marks.
-        # We need to include the new tokensep replacement before.
-        num_elements = len(tokenizer_json["normalizer"]["normalizers"])
-        if (
-            num_elements > 1
-        ):  # this means a previous replacement with args.tokensep exists
-            tokenizer_json["normalizer"]["normalizers"][-2]["pattern"][
-                "String"
-            ] = args.tokensep
-        else:  # here, we have to create a new one
-            if args.encoding == "bpe":
-                replacement = ""
-            elif args.encoding == "atomic":
-                replacement = " "
-            pattern = (
-                {
-                    "type": "Replace",
-                    "pattern": {"String": args.tokensep},
-                    "content": replacement,
-                },
+        tokenizer_json["pre_tokenizer"]["pretokenizers"][1]["pattern"][
+            "Regex"
+        ] = f"([^{args.columnsep}]*{args.columnsep}){{{int(args.seqpos) - 1}}}"
+        tokenizer_json["pre_tokenizer"]["pretokenizers"][2]["pattern"][
+            "Regex"
+        ] = f"{args.columnsep}.*"
+        if args.tokensep is not None:
+            # Last position (-1) is for stripping the quotation marks.
+            # We need to include the new tokensep replacement before.
+            num_elements = len(tokenizer_json["normalizer"]["normalizers"])
+            if (
+                num_elements > 1
+            ):  # this means a previous replacement with args.tokensep exists
+                tokenizer_json["normalizer"]["normalizers"][-2]["pattern"][
+                    "String"
+                ] = args.tokensep
+            else:  # here, we have to create a new one
+                if args.encoding == "bpe":
+                    replacement = ""
+                elif args.encoding == "atomic":
+                    replacement = " "
+                pattern = (
+                    {
+                        "type": "Replace",
+                        "pattern": {"String": args.tokensep},
+                        "content": replacement,
+                    },
+                )
+                tokenizer_json["normalizer"]["normalizers"].insert(0, pattern)
+        # unfortunately we need to temporarily save the tokenizer as
+        # some instances of TokenizerFast are deprived of the ability to load serialized tokenizers
+        with tempfile.NamedTemporaryFile("r+") as tmp:
+            json.dump(tokenizer_json, tmp)
+            tmp.seek(0)
+            tokenizer = tokenizer_cls(
+                tokenizer_file=tmp.name,
+                mask_token=mask_token,
+                cls_token=cls_token,
+                unk_token=unk_token,
+                pad_token=pad_token,
+                sep_token=sep_token,
+                bos_token=bos_token,
+                eos_token=eos_token,
+                model_max_length=model_max_len,
+                truncation=True,
+                truncation_side=trunc_side,
             )
-            tokenizer_json["normalizer"]["normalizers"].insert(0, pattern)
-    # unfortunately we need to temporarily save the tokenizer as
-    # some instances of TokenizerFast are deprived of the ability to load serialized tokenizers
-    with tempfile.NamedTemporaryFile("r+") as tmp:
-        json.dump(tokenizer_json, tmp)
-        tmp.seek(0)
-        tokenizer = tokenizer_cls(
-            tokenizer_file=tmp.name,
-            mask_token=mask_token,
-            cls_token=cls_token,
-            unk_token=unk_token,
-            pad_token=pad_token,
-            sep_token=sep_token,
-            bos_token=bos_token,
-            eos_token=eos_token,
-            model_max_length=model_max_len,
-            truncation=True,
-            truncation_side=trunc_side,
+    else:  # pre-training data is the same as the data for tokenizing
+        logger.info(
+            f"Loading tokenizer from {tokenizer_file} and setting it to {args.blocksize} model max length"
         )
-    # else:  # pre-training data is the same as the data for tokenizing
-    #     logger.info(
-    #         f"Loading tokenizer from {tokenizer_file} and setting it to {args.blocksize} model max length"
-    #     )
-    #     tokenizer = tokenizer_cls(
-    #         tokenizer_file=str(tokenizer_file),
-    #         mask_token="[MASK]",
-    #         cls_token="[CLS]",
-    #         unk_token="[UNK]",
-    #         pad_token="[PAD]",
-    #         sep_token="[SEP]",
-    #         bos_token="[BOS]",
-    #         eos_token="[EOS]",
-    #         model_max_length=args.blocksize,
-    #         truncation=True,
-    #         truncation_side="left" if args.lefttailing else "right",
-    #     )
+        tokenizer = tokenizer_cls(
+            tokenizer_file=str(tokenizer_file),
+            mask_token="[MASK]",
+            cls_token="[CLS]",
+            unk_token="[UNK]",
+            pad_token="[PAD]",
+            sep_token="[SEP]",
+            bos_token="[BOS]",
+            eos_token="[EOS]",
+            model_max_length=args.blocksize,
+            truncation=True,
+            truncation_side="left" if args.lefttailing else "right",
+        )
     tokenizer.name_or_path = tokenizer_file
     return tokenizer
 
