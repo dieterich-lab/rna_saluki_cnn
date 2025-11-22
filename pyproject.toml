@@ -13,7 +13,6 @@ python = ">=3.8,<4.0"
 biolm_utils = { path = "biolm_utils", develop = true }
 
 [tool.poetry.group.mlflow]
-description = "Optional MLflow extras used for experiment tracking and demos"
 
 [tool.poetry.group.mlflow.dependencies]
 mlflow = "*"
