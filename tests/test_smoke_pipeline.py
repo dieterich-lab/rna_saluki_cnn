@@ -12,7 +12,7 @@ def test_help_message_runs():
     result = subprocess.run(
         [sys.executable, "saluki.py", "tokenize", "--help"],
         capture_output=True,
-        cwd="/home/pwiesenbach/rna_saluki_cnn",
+        cwd=str(Path(__file__).resolve().parents[1]),
     )
     assert result.returncode == 0
     assert b"usage" in result.stdout.lower()
@@ -33,9 +33,10 @@ def test_full_pipeline_integration():
 
         # Copy dummy data
         data_file = temp_path / "test_data.txt"
-        shutil.copy(
-            "/home/pwiesenbach/rna_saluki_cnn/test/dummy_rna_data.txt", data_file
-        )
+        # Copy the bundled test data from the repo root (portable relative path)
+        repo_root = Path(__file__).resolve().parents[1]
+        bundled_data = repo_root / "test" / "dummy_rna_data.txt"
+        shutil.copy(bundled_data, data_file)
 
         # 1. Tokenize with Hydra overrides
         tokenize_cmd = [
@@ -63,9 +64,7 @@ def test_full_pipeline_integration():
             "--accelerator",
             "cpu",
         ]
-        result = subprocess.run(
-            tokenize_cmd, capture_output=True, cwd="/home/pwiesenbach/rna_saluki_cnn"
-        )
+        result = subprocess.run(tokenize_cmd, capture_output=True, cwd=str(repo_root))
         assert result.returncode == 0, f"Tokenize failed: {result.stderr.decode()}"
 
         # Check tokenizer was created
@@ -103,16 +102,14 @@ def test_full_pipeline_integration():
             "--accelerator",
             "cpu",
         ]
-        result = subprocess.run(
-            finetune_cmd, capture_output=True, cwd="/home/pwiesenbach/rna_saluki_cnn"
-        )
+        result = subprocess.run(finetune_cmd, capture_output=True, cwd=str(repo_root))
         assert result.returncode == 0, f"Fine-tune failed: {result.stderr.decode()}"
 
-    # Check predictions were generated during fine-tune
-    # Predictions are saved per split (e.g., /fine-tune/0/test_predictions.csv)
-    # Check predictions or model were created
-    predictions = list(temp_path.rglob("test_predictions.csv"))
-    model_files = list(temp_path.rglob("pytorch_model.*"))
-    assert (
-        len(predictions) > 0 or len(model_files) > 0
-    ), f"Neither predictions nor model files found under {temp_path}; check logs"
+        # Check predictions were generated during fine-tune
+        # Predictions are saved per split (e.g., /fine-tune/0/test_predictions.csv)
+        # Check predictions or model were created while the temp dir still exists
+        predictions = list(temp_path.rglob("test_predictions.csv"))
+        model_files = list(temp_path.rglob("pytorch_model.*"))
+        assert (
+            len(predictions) > 0 or len(model_files) > 0
+        ), f"Neither predictions nor model files found under {temp_path}; check logs"

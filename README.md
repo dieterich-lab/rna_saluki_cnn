@@ -35,6 +35,28 @@ Notes:
 - If you don't want Poetry, the repo still supports manual virtualenv+pip workflows; use
     `python -m venv .venv` and `python -m pip install -e biolm_utils` as an alternative.
 
+Migration note (Pipfile -> Poetry)
+----------------------------------
+
+This project historically used Pipenv/Pipfile for development. The current
+recommended workflow is Poetry for reproducible dependency management.
+
+If you are migrating from a Pipfile-based setup, a simple approach is:
+
+```bash
+# initialize Poetry in the repo root (if needed)
+poetry init --no-interaction
+# add the local subtree as a path dependency if you want it editable
+poetry add --dev ./biolm_utils
+# generate lockfile
+poetry lock
+```
+
+If you prefer a single-step upgrade, install dependencies via Poetry in the repo root and
+remove the legacy Pipfile/Pipfile.lock once you have verified everything works. CI workflows
+may still include Pipenv-based steps; consider updating CI to use Poetry for a consistent
+developer experience.
+
 **Requirements:** Python 3.8+, PyTorch, CUDA (optional for GPU acceleration)
 
 Optional: keep the included `biolm_utils` subtree up-to-date with upstream
