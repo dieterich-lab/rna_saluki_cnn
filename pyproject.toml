@@ -6,6 +6,11 @@ authors = ["dieterich-lab <noreply@example.com>"]
 license = "MIT"
 readme = "README.md"
 
+# We don't intend for the top-level repo to be installed as a packaged library —
+# use Poetry only to manage the workspace/dependencies. Disables trying to
+# install the current project as a package in the environment.
+package-mode = false
+
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
 # use the local subtree as an editable dependency — this ensures a single, top-level
