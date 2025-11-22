@@ -1,7 +1,0 @@
-[packages]
-biolm_utils = {editable= true, path = "biolm_utils"}
-
-[dev-packages]
-debugpy = "*"
-torch-tb-profiler = "*"
-pytest = "*"
