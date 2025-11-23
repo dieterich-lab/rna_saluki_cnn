@@ -1,0 +1,34 @@
+name: lockfile-sync
+
+on:
+  pull_request:
+    branches: [ main, refactor-config-management ]
+  push:
+    branches: [ main, refactor-config-management ]
+
+jobs:
+  poetry-lock-sync:
+    name: Verify poetry.lock is in sync with pyproject.toml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+
+      - name: Verify lockfile
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          # Generate lockfile in-place without updating (respects current pyproject)
+          poetry lock --no-interaction --no-update
+
+          # Fail if poetry.lock changed
+          if [ -n "$(git status --porcelain --untracked-files=no -- poetry.lock)" ]; then
+            echo "poetry.lock is out-of-sync with pyproject.toml. Run 'poetry lock' and commit the changed poetry.lock file." >&2
+            git --no-pager diff --no-color --name-only -- poetry.lock || true
+            exit 1
+          fi

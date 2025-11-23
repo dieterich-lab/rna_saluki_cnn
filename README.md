@@ -1,419 +1,325 @@
-# RNA Saluki CNN: Deep Learning for RNA Sequence Analysis
+# bioml_utils — utilities for bioinformatic language models
 
-A high-performance deep learning framework for RNA sequence analysis using convolutional neural networks (CNNs). Built on the [Saluki](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-022-02811-x) architecture, this tool enables:
+A compact toolkit for tokenizing, pre-training and fine-tuning language models on biological sequences (RNA/protein). It also supports interpretation with leave-one-out (LOO) scores.
 
-- **Tokenization**: Convert RNA sequences to one-hot encoded representations
-- **Fine-tuning**: Train regression and classification models on RNA data
-- **Prediction**: Apply trained models to new sequences
-- **Interpretation**: Generate leave-one-out (LOO) scores for model interpretability
+## Quick start (Poetry)
 
-## Quick Start
-
-### Installation (Poetry — single-step setup)
-
-This repository now includes a top-level Poetry project. The `biolm_utils` library
-is bundled as a local subtree and is declared as a path dependency in `pyproject.toml`.
-This makes a single Poetry command enough to set up both the Saluki project and the
-editable `biolm_utils` subtree for development.
-
-From the repository root:
+This repo uses Poetry for reproducible installs. From the project root:
 
 ```bash
-# optional: tell Poetry which Python interpreter to use
+# optional: choose a Python interpreter
 poetry env use $(which python)
-
-# install runtime and dev dependencies
 poetry install
 
-# to include MLflow and MLflow-related extras for demos and experiment tracking
+# run tests
+poetry run pytest -q
+```
+
+To add MLflow extras for experiment tracking:
+
+```bash
 poetry install --with mlflow
 ```
 
-Notes:
-- The `biolm_utils` subtree is installed in editable/develop mode so changes in
-    `biolm_utils/` are available right away while developing the top-level project.
-- If you don't want Poetry, the repo still supports manual virtualenv+pip workflows; use
-    `python -m venv .venv` and `python -m pip install -e biolm_utils` as an alternative.
+## Pipfile → Poetry
 
-Migration note (Pipfile -> Poetry)
-----------------------------------
-
-This project historically used Pipenv/Pipfile for development. The current
-recommended workflow is Poetry for reproducible dependency management.
-
-If you are migrating from a Pipfile-based setup, a simple approach is:
+This project migrated from Pipenv to Poetry. To migrate older environments:
 
 ```bash
-# initialize Poetry in the repo root (if needed)
 poetry init --no-interaction
-# add the local subtree as a path dependency if you want it editable
-poetry add --dev ./biolm_utils
-# generate lockfile
 poetry lock
 ```
 
-If you prefer a single-step upgrade, install dependencies via Poetry in the repo root and
-remove the legacy Pipfile/Pipfile.lock once you have verified everything works. CI workflows
-may still include Pipenv-based steps; consider updating CI to use Poetry for a consistent
-developer experience.
+## Layout
 
-**Requirements:** Python 3.8+, PyTorch, CUDA (optional for GPU acceleration)
+Top-level package: `biolm_utils/` — main modules include:
+- `biolm.py`     : CLI entrypoint for tokenize / pre-train / fine-tune / interpret / predict
+- `config.py`    : Config dataclass and compatibility helpers
+- `cross_validation.py` : New CrossValidator orchestration (replaces decorator-based CV)
+- `params.py` / `entry.py` : CLI parsing and runtime wiring
+- `train_tokenizer.py`, `trainer.py`, `interpret.py`, `loo_utils.py` : core functionality
 
-Optional: keep the included `biolm_utils` subtree up-to-date with upstream
-Optional: keep the included `biolm_utils` subtree up-to-date with upstream
+See the `biolm_utils/` package for full details.
 
-### Keeping `biolm_utils` up-to-date (optional)
-If you use the included `biolm_utils` subtree and want to pull the latest changes from upstream, use the following steps:
+
+## Docs
+
+See DOCS/ for a short guide on framework internals and a plugin example (Saluki).
+
+
+## Output layout
+
+Experiments default to the `outputpath` in `params.py`. Typical layout:
+
+```
+my_experiment/
+  tokenizer.json
+  pre-train/
+  fine-tune/<fold-id>/pytorch_model.bin
+```
+
+### Modes & examples
+
+Main CLI: `biolm.py` (modes: `tokenize`, `pre-train`, `fine-tune`, `interpret`, `predict`).
+
+Examples:
 
 ```bash
-# add upstream (only once, if missing)
-git remote add biolm_upstream https://github.com/dieterich-lab/biolm_utils.git || true
-# fetch latest changes
-git fetch biolm_upstream
-# pull latest from upstream into the subtree
-git subtree pull --prefix=biolm_utils biolm_upstream main --squash
+# tokenize
+python biolm.py tokenize --configfile config.yaml
+
+# pre-train
+python biolm.py pre-train --filepath data.txt --outputpath out/
+
+# fine-tune
+python biolm.py fine-tune --filepath train.tsv --outputpath out/
+
+# interpret / predict
+python biolm.py interpret --inference.pretrainedmodel out/fine-tune/0
 ```
 
-### GPU selection
-GPU usage is auto-configured by the framework. When `debugging.accelerator=gpu` (the default), the system will auto-detect the number of available GPUs and apply a restriction that results in a power-of-two count (1, 2, 4, 8, ...).
+#### Notes
 
-- The runtime GPU count is always auto-detected and placed into `debugging.detected_ngpus` in the final structured configuration (BioLMConfig) returned by `load_config()`.
-- Do not attempt to set explicit GPU counts via `settings.environment.ngpus` or `debugging.ngpus`—these legacy keys are no longer supported and will raise an error.
+- `splitpos=None` → 90/10 train/val (no test). If you provide split ids, the code will run cross-validation over splits.
+- `specifiersep` (one-hot only) allows per-token float channels (e.g. `A#2.5`).
+- `vocabsize`: The maximal size of the vocabulary at the end of the tokenization process.
+- `minfreq`: The minimum frequency that a token should appear in the training file before it is recorded as vocabulary item.
+- `atomicreplacements`: This is a dictionary with tokens that should be treated as atomic tokens during the byte pair encoding process. You have to specify both: The initial token and the character that it is to be mapped to. 
+- `encoding`: The encoding to apply: character-wise (`atomic`) or BPE (`bpe`).
+- `maxtokenlength`: The BPE tokenizer can come up with pretty long tokens. This number caps the length at a maximal length.
+- `lefttailing`: If true, sequences are cropped from the left (keeps right-side context).
 
-If you need to explicitly force CPU usage, set `debugging.accelerator=cpu` to run on CPU only.
+### Pre-training (language models only) and fine-tuning a model 
 
+For pre-training an language model via Masked Language Modelling you will use the `pre-train` mode. For fine-tuning a model, the `fine-tune` mode is required. In your `config.yaml` you need to at least specify the parameters under `training`:
 
-### Saluki-specific invariants (important)
-Saluki relies on a couple of hard-coded design invariants that must not be changed in global configs or example YAMLs. These invariants are baked into the Saluki plugin implementation to ensure all downstream code and any future plugins built on top of Saluki use identical base assumptions:
+```yaml
+training:
+  general:
+    batchsize: 8
+    gradacc: 4
+    blocksize: 512
+    nepochs: 10
+    patience: 3
+    resume: False # for resuming training
+  fine-tuning:
+    fromscratch: False # if we want to fine-tune without a pre-trained model (language models only)
+    scaling: log # [log, minmax, standard]
+    weightedregression: False
+```
 
-- tokenization.encoding: MUST be `atomic` (one-hot encoding). Saluki expects one-hot inputs for the CNN layer; other encodings are not supported.
-- training.blocksize: MUST be `12288` (the fixed model sequence length). This is a model architectural choice used to set tokenizer/model max lengths and is enforced by the plugin.
+The attributes under `training: general` should be mostly self-explanatory: `blocksize` referes to the sequence length and might lead to errors when chosen bigger than `512` (for XLNET). For Saluki, we were able to set this maximum sequence length to `12288`. Sequences will then be truncated by the tokenizer or will be tokenized, re-centered and cropped when using the option `cdscentered` (see down below).
 
-If one of these values is set differently, the code will fail early with a clear error explaining that Saluki enforces these values internally. Programmatic enforcement lives inside the plugin's dataset and model helper code so plugin authors don't need to duplicate checks.
-
-Tests were added to `tests/test_saluki_invariants.py` to verify these behaviors.
-
-Testing locally
------------------
-To run the Saluki-specific unit tests locally, install the development dependencies and run pytest from the project root:
+We also have to clarify data pre-processing and environment options:
 
 ```bash
-# from the repo root
-cd rna_saluki_cnn
+data pre-processing:
+  centertoken: False # either False or a token/character on which the sequence will be centered
+environment:
+  detected_ngpus: (auto-detected)  # Auto-detected; powers of two only (1,2,4,...)
 
-# if you used Poetry
-poetry install
-poetry run pytest -q tests/test_saluki_invariants.py
-
-# or, if you created a virtualenv manually
-# source .venv/bin/activate
-# pytest -q tests/test_saluki_invariants.py
+BREAKING CHANGE: explicit GPU counts removed
+------------------------------------------------
+Note: The legacy `ngpus` option in `settings.environment` and `debugging.ngpus` has been removed. GPU counts are now auto-detected and exposed at `debugging.detected_ngpus` in the final `BioLMConfig` returned by `load_config()`.
+ - Do not set `settings.environment.ngpus` or `debugging.ngpus` in your config YAMLs; they raise a ValueError.
+ - Programmatic access: use `from biolm_utils.params import get_detected_ngpus` and call `get_detected_ngpus(args)`.
+ - Example: `detected = get_detected_ngpus(args)`.
 ```
 
-#### Breaking change: explicit GPU counts removed
+The `data processing` attributes refer to specific pre-processing options that are in detail explained by the command line help.
 
-The legacy `ngpus` option has been removed (e.g., `settings.environment.ngpus` or `debugging.ngpus`). The runtime GPU count is now auto-detected and populated in `debugging.detected_ngpus`.
+### Programmatic orchestration (train/dev/test runs with cross-validation)
 
-To read the auto-detected value programmatically from Python:
+If you want to orchestrate runs from other Python code (for example, to integrate
+the library into a higher-level workflow or test harness) prefer the explicit
+helpers introduced in the refactor: `make_run_fn`, `CrossValidator` and
+`Paths`. These are easier to unit-test and avoid mutating global state.
 
-```python
-from biolm_utils.params import get_detected_ngpus, load_config
-# The loader now returns a structured BioLMConfig dataclass instance.
-cfg = load_config([])
-detected = get_detected_ngpus(cfg)
+Example (high-level):
+
+```py
+from biolm_utils.config import get_config
+from biolm_utils.params import load_config
+from biolm_utils.train_tokenizer import tokenize
+from biolm_utils.train_utils import get_tokenizer, get_dataset
+from biolm_utils.runner import make_run_fn
+from biolm_utils.cross_validation import CrossValidator
+from biolm_utils.paths import Paths
+
+# Load your config / args (same objects used by the CLI)
+config = get_config()
+# load_config returns a BioLMConfig dataclass instance
+args = load_config()
+
+# Prepare tokenizer / datasets as usual
+tokenizer = get_tokenizer(args, /* TOKENIZERFILE */, config.TOKENIZER_CLS, config.PRETRAINING_REQUIRED)
+tokenizer_for_trainer = tokenizer
+full_dataset = get_dataset(args, tokenizer, config.ADD_SPECIAL_TOKENS, /* DATASETFILE */, config.DATASET_CLS)
+
+# Build the per-run callable (identical signature as legacy nested `run`):
+run_once = make_run_fn(args, config, tokenizer, tokenizer_for_trainer, full_dataset)
+
+# Create immutable per-run paths (these values come from biolm_utils.entry in the CLI)
+base_paths = Paths(
+  model_load_path=/* MODELLOADPATH */,
+  model_save_path=/* MODELSAVEPATH */,
+  output_path=/* OUTPUTPATH */,
+  report_file=/* REPORTFILE */,
+  rank_file=/* RANKFILE */,
+)
+
+# Instantiate CrossValidator and run the selected mode: fine-tune, predict, interpret, pre-train
+cv = CrossValidator(params=args, dataset=full_dataset, run_once_fn=run_once, base_paths=base_paths)
+result = cv.execute()
+
+# `result` contains per-mode semantics (list of fold results for cross-validation, or a single value for predict)
 ```
 
-If you make changes in `biolm_utils` locally and want to push them upstream (you need write access to upstream), use:
+## Configuration loader — programmatic usage and CLI behaviour
 
- 
-```bash
-git subtree push --prefix=biolm_utils biolm_upstream main
+We simplified the configuration loader to be clearer and easier to test. Key
+points you should be aware of:
+
+- load_config now returns a structured `BioLMConfig` dataclass (no more implicit
+  flattened argparse.Namespace). Use `cfg.data_source.filepath`,
+  `cfg.training.batchsize`, `cfg.debugging.detected_ngpus`, etc.
+- When calling programmatically prefer the explicit API: pass Hydra-style
+  overrides as a list of strings (`key=value`). We purposely stopped auto-parsing
+  sys.argv for programmatic calls — that behaviour was fragile and confusing.
+
+Examples:
+
+Programmatic:
+
+```py
+from biolm_utils.params import load_config
+
+# Explicit list of overrides: 'key=value' strings
+cfg = load_config(["mode=tokenize", "debugging.accelerator=cpu"])
+print(cfg.mode)  # -> 'tokenize'
 ```
 
-
-**GPU Configuration:**
-
-```bash
-# Force CPU usage
-python saluki.py debugging.accelerator=cpu ...
-
-# Use GPU (default)
-python saluki.py debugging.accelerator=gpu ...
-```
-
-### Basic Usage
-
-```bash
-# Tokenize your RNA sequences
-python saluki.py mode=tokenize data_source.filepath=my_sequences.txt
-
-# Train a regression model
-python saluki.py mode=fine-tune task=regression \
-    data_source.filepath=my_training_data.txt \
-    data_source.splitratio=[80,10,10] \
-    training.learning_rate=0.001
-
-# Train with a file that has a header row
-python saluki.py mode=fine-tune task=regression \
-    data_source.filepath=my_data_with_header.txt \
-    data_source.stripheader=true \
-    data_source.splitratio=[80,10,10]
-
-# Make predictions (assuming model was saved to 'my_experiment/fine-tune/0')
-python saluki.py mode=predict task=regression \
-    data_source.filepath=my_test_data.txt \
-    inference.pretrainedmodel=my_experiment/fine-tune/0
-
-# Generate interpretations
-python saluki.py mode=interpret task=regression \
-    data_source.filepath=my_test_data.txt \
-    inference.pretrainedmodel=my_experiment/fine-tune/0
-```
-
-## Data Format
-
-Your input data should be a tab-separated file with the following columns:
-
-```text
-sequence_id    sequence_data    label
-ENST000001    A,U,G,C,A,G...    1.23
-ENST000002    C,G,A,U,G,C...    0.89
-ENST000003    U,A,C,G,U,A...    2.45
-```
-
-- **sequence_id**: Unique identifier for each sequence (string)
-- **sequence_data**: RNA sequence (comma-separated nucleotides: A,C,G,U)
-- **label**: Numeric value for regression (float) or class label for classification (string - will be auto-encoded to integers)
-
-**Example file content (save as tab-separated .txt file):**
-
-```text
-ENST000001    A,U,G,C,A,G    1.234
-ENST000002    C,G,A,U,G,C    0.567
-ENST000003    U,A,C,G,U,A    class_A
-```
-
-**Important Notes:**
-
-- No header row in the data file (unless `data_source.stripheader=true`)
-- Sequences can be of variable length
-- For classification, use any string labels (e.g., "class_A", "class_B") - they will be automatically converted to integers
-- File should be saved with `.txt` extension
-
-## Command Line Interface
-
-The framework uses Hydra for configuration management. All parameters can be set via command line:
+Via CLI (Hydra):
 
 ```bash
-python saluki.py [mode=MODE] [task=TASK] [parameter=value]...
+# Use Hydra-style overrides from the shell; Hydra CLI still works as before
+python biolm.py mode=tokenize debugging.accelerator=cpu
 ```
 
-### Available Modes
+Notes:
 
-- `tokenize`: Learn sequence tokenization
-- `fine-tune`: Train models on labeled data
-- `predict`: Make predictions with trained models
-- `interpret`: Generate LOO scores for interpretability
+- Old behaviour where `load_config()` attempted to parse `sys.argv` and
+  convert `--flag value` style arguments to hierarchical keys (e.g. `--filepath`
+  -> `data_source.filepath`) has been removed. If you relied on that behaviour,
+  update invocations to call `load_config` with explicit overrides or call the
+  CLI directly (Hydra handles CLI args).
+- Config validation and runtime GPU autodetection now live on the
+  `BioLMConfig` dataclass via `cfg.validate()` and `cfg.autodetect_gpus()` and
+  are run automatically when using `load_config`.
 
-### Available Tasks
+Notes & migration
+- `run_once` keeps the original signature used by the old decorator: run(train, val, test, model_load, model_save, report, rank)
+- The old `@parametrized_decorator` wrapper is still available for backward compatibility but is deprecated — prefer the `CrossValidator` + `make_run_fn` flow above.
 
-- `regression`: For continuous numeric predictions
-- `classification`: For categorical predictions
+### Cross-validation behaviour and pitfalls
 
-### Getting Help
+Cross-validation configuration can be a little subtle — here are the rules and gotchas so you get deterministic, predictable behavior.
 
-```bash
-# General help
-python saluki.py --help
+- `data_source.crossvalidation` accepts three kinds of values:
+  - `null` / `0` / `False` (default) — no cross-validation. The code will either use `splitpos` + `devsplits` (deterministic splits) when provided, or a single random split when `splitratio` is specified.
+  - `true` — *use predefined splits*. This requires `splitpos` to be set and `devsplits` (a list of split ids — and optionally `testsplits`) to be provided in your config or dataset file. This runs one pass per entry in `devsplits` (and `testsplits` if set) deterministically.
+  - integer >= 2 — *random k-fold cross-validation* (k-fold). This performs k independent shuffled runs and requires `splitratio` (e.g., `[80,10,10]` or `[80,20]`) to determine train/val/(test) percentages. Note: `crossvalidation=1` is not allowed because it is ambiguous.
 
-# Mode-specific help
-python saluki.py mode=fine-tune --help
+Pitfalls to avoid:
+- `crossvalidation=true` without `splitpos` is ambiguous and will now raise an error — either provide `splitpos` (and `devsplits`) or set `crossvalidation` to a positive integer >= 2 and a `splitratio`.
+- `crossvalidation` as an integer while `splitpos` is present is conflicting — numeric crossvalidation implies random splits and therefore conflicts with predefined split positions; prefer `crossvalidation=true` for predefined splits.
+- `splitpos` set without `devsplits` is invalid — you must provide `devsplits` (and optionally `testsplits`) to define which splits are used for validation/testing.
 
-# Task-specific help
-python saluki.py mode=fine-tune task=regression --help
+Example YAML snippets:
+
+1) Predefined splits (one deterministic CV run per entry of devsplits):
+
+```yaml
+data_source:
+  splitpos: 3
+  devsplits: [[1], [2]]  # list-of-lists: each tuple defines dev/test groupings
+  testsplits: [[3], [4]] # optional
+  crossvalidation: true
 ```
 
-## Advanced Configuration
+2) Random 5-fold cross-validation with 80/10/10 train/val/test:
 
-### Using Config Files
-
-For complex setups, create YAML config files and override specific parameters:
-
-```bash
-python saluki.py --config-path configs --config-name my_config \
-    data_source.filepath=new_data.txt \
-    training.learning_rate=0.0005
+```yaml
+data_source:
+  crossvalidation: 5
+  splitratio: [80, 10, 10]
 ```
 
-### Cross-Validation
+3) No CV (single run): deterministic with splits or a single random split
 
-```bash
-# 5-fold cross-validation (note: splitratio is train/validation only for CV)
-python saluki.py mode=fine-tune task=regression \
-    data_source.filepath=data.txt \
-    data_source.crossvalidation=5 \
-    data_source.splitratio=[80,20]
+```yaml
+data_source:
+  crossvalidation: 0
+  splitpos: 1
+  devsplits: [2]
 ```
 
-### Custom Data Splits
+The library also validates these combinations early — invalid or ambiguous settings will raise a helpful error explaining the expected fix.
 
-If your data includes predefined split columns:
+Automatic migration helper
 
-```bash
-python saluki.py mode=fine-tune task=regression \
-    data_source.filepath=data_with_splits.txt \
-    data_source.splitpos=4 \
-    data_source.devsplits=[1,2] \
-    data_source.testsplits=[3]
+To help migrate older configs that may use ambiguous forms, we've added a small helper in `biolm_utils.cfg_migration`:
+
+- `analyze_crossvalidation(params)` — returns human-readable notes about ambiguous or problematic settings.
+- `migrate_crossvalidation(params, auto_apply=False)` — returns a copy of `params` and recommended fixes; with `auto_apply=True` it will apply safe conversions (e.g. `0 -> False`, `True + splitratio -> convert to default k-fold`).
+
+Usage example:
+
+```py
+from biolm_utils.cfg_migration import analyze_crossvalidation, migrate_crossvalidation
+
+# analyze
+notes = analyze_crossvalidation(args)
+for n in notes:
+  print("TODO:", n)
+
+# apply safe migrations
+new_args, applied_notes = migrate_crossvalidation(args, auto_apply=True)
 ```
 
-## Advanced Data Preprocessing
 
-The framework supports advanced preprocessing options via the `settings.data_pre_processing` section:
+Under `environment`, you can decide if you want to train on GPU or CPU and on how many GPUs you want to train. GPU count is auto-detected and restricted to powers-of-two values (1, 2, 4, 8...).
 
-```bash
-# Center sequences around a specific token (e.g., CDS start)
-python saluki.py mode=fine-tune task=regression \
-    settings.data_pre_processing.centertoken="ATG" \
-    data_source.filepath=data.txt
+### Extract LOO-scores for a model
 
-# Filter to only sequences of specific lengths
-python saluki.py mode=fine-tune task=regression \
-    settings.data_pre_processing.only512=true \
-    data_source.filepath=data.txt
+To calculate importance scores for indidvidual input tokens, we can use the mode `interpret`. The script will then run over the test splits and extracts leave-one-out (LOO) scores. The LOO scores are estimated by leaving a certain token blank (or delete comepletely, see options below), run the model with this "defective" sequence and compare the results to the prediction of the model for the original sequence. Positive scores denote, that leaving the input out leads to higher prediction, v.v. negative score means, leaving the input out leads to lower predictions. 
 
-# Extract specific sequence regions
-python saluki.py mode=fine-tune task=regression \
-    settings.data_pre_processing._3utr=true \
-    data_source.filepath=data.txt
+```yaml
+looscores:
+  handletokens: remove # remove, mask, replace
+  replacementdict: None # dict of atomic tokens that should be replaced against each other if `--handletokens` is set to `replace`."
 ```
 
-Available preprocessing options:
+The scripts will then extract LOO scores for all splits of the fine-tuning data and saves them as `.csv` under the corresponding fine-tuning path as `loo_scores_{handle_tokens}.csv`.
 
-- `centertoken`: Center sequences around a specific token
-- `only512`: Filter to only 512-token sequences
-- `_3utr`: Extract 3' UTR regions
-- `non3utr`: Extract non-3' UTR regions
-- `nomarkers`: Remove special marker tokens
+### Inference:
 
-## Output Structure
+Inference means sending a fine-tuned model on unseen data and let it make predictions. For this, run the main script with in the `predict` mode. The configfile mirrors only a fraction of the attributes compared to the complete pipeline.
 
-Results are saved in the `outputpath` directory:
+### Resuming a model
 
-```text
-experiment_output/
-├── tokenizer.json              # Trained tokenizer
-├── tokenize/
-│   └── logs/                   # Tokenization logs
-├── fine-tune/
-│   ├── 0/                      # Cross-validation fold 0
-│   │   ├── pytorch_model.bin   # Model weights
-│   │   ├── test_predictions.csv # Predictions
-│   │   ├── all_results.json    # Metrics
-│   │   └── trainer_state.json  # Training state
-│   └── tboard/                 # TensorBoard logs
-├── predictions/
-│   ├── test_predictions.csv    # Model predictions
-│   ├── rank_deltas.csv        # Performance metrics
-│   └── logs/                  # Execution logs
-└── interpretations/
-    ├── loo_scores_remove.csv  # LOO scores (CSV)
-    ├── loo_scores_remove.pkl  # LOO scores (SHAP format)
-    └── logs/                  # Execution logs
-```
+There are two use cases to resume a model using the `--resume` argument:
+1) `--resume` (without parameters) triggers the huggingface internal `resume_from_checkpoint` option which will only _continue_
+a training that has been interrupted. For example, a planned training that was to run for 50 epochs and was interrupted  at epoch
+23 can be resumed from the best checkpoint to be run from epoch 23 to planned epoch 50.
+2) `--resume X` will trigger further pre-training a model from its best checkpoint for additional `X` epochs.
 
-## Key Parameters
 
-### Data Configuration
+## Customization
 
-- `data_source.filepath`: Path to your data file
-- `data_source.stripheader`: Whether to skip the first line (header) in the data file (default: false)
-- `data_source.columnsep`: Column separator in data file (default: "\t")
-- `data_source.tokensep`: Token separator within sequences (default: ",")
-- `data_source.splitratio`: Train/val/test split ratios (e.g., [80,10,10])
-- `data_source.crossvalidation`: Number of CV folds
-- `data_source.splitpos`: Column index for predefined splits
+This framwework on it's own does not provide full functionality. It is meant to be employed with plugins that implement the following classes and methods:
+- A custom model class that inherits from 🤗 [PreTrainedModel](https://huggingface.co/docs/transformers/v4.42.0/en/main_classes/model#transformers.PreTrainedModel) and provides a static `getconfig()` method.
+- A custom dataset class that inherits from [RNABaseDataset](./biolm_utils/rna_datasets.py) and provides the `__getitem__()` method.
+- A main script that imports the `run()` method from [biolm.py](./biolm_utils/biolm.py) and defines a custom `Config` object from [config.py](./biolm_utils/config.py) via `setconfig()`.
 
-### Training Parameters
-
-- `training.learning_rate`: Learning rate (default: 0.001)
-- `training.batchsize`: Batch size for training
-- `training.nepochs`: Number of training epochs
-- `training.patience`: Early stopping patience
-- `training.seed`: Random seed for reproducibility (default: 42)
-- `training.scaling`: Label scaling method ("log", "minmax", "standard", or "none")
-- `training.resume`: Whether to resume training from checkpoint (default: false)
-
-### Tokenization Parameters
-
-- `tokenization.encoding`: Encoding type ("atomic" or "bpe")
-- `tokenization.samplesize`: Number of samples to use for tokenizer training
-- `tokenization.lefttailing`: Whether to truncate from left when sequences are too long
-
-## Architecture
-
-Built on:
-
-- **PyTorch**: Deep learning framework
-- **Transformers**: Model architecture library
-- **Hydra**: Configuration management
-- **BioLM Utils**: RNA-specific utilities
-
-## Citation
-
-If you use this software, please cite the original Saluki paper:
-
-```text
-Saluki: alignment-free estimation of amino acid substitution rates
-Authors et al.
-Genome Biology, 2022
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**CUDA out of memory**: Reduce batch size with `training.batchsize=4`
-
-**Invalid sequence format**: Ensure sequences are comma-separated nucleotides (A,C,G,U)
-
-**Config not found**: Use absolute paths or check working directory
-
-### Debugging Options
-
-For development and troubleshooting, use these debugging parameters:
-
-```bash
-# Use only a subset of data for quick testing
-python saluki.py mode=fine-tune task=regression \
-    debugging.dev=100 \
-    data_source.filepath=data.txt
-
-# Run in silent mode (less verbose output)
-python saluki.py mode=fine-tune task=regression \
-    debugging.silent=true \
-    data_source.filepath=data.txt
-
-# Force reload data even if cached
-python saluki.py mode=fine-tune task=regression \
-    debugging.forcenewdata=true \
-    data_source.filepath=data.txt
-
-# Force GPU or CPU selection
-python saluki.py mode=fine-tune task=regression \
-    debugging.accelerator=gpu \
-    data_source.filepath=data.txt
-```
-
-**Debugging Parameters:**
-
-- `debugging.dev`: Use only N samples for quick testing (default: false)
-- `debugging.silent`: Reduce logging verbosity (default: false)
-- `debugging.forcenewdata`: Force dataset recreation even if cached (default: false)
-- `debugging.accelerator`: Hardware accelerator ("gpu" or "cpu", default: "gpu")
-    Note: GPU count is auto-detected and restricted to powers-of-two; the detected value is available at `debugging.detected_ngpus`. Do not set GPU counts explicitly in configs; prefer `debugging.detected_ngpus`.
-
-### Getting Support
-
-- Check the [BioLM Utils documentation](https://github.com/dieterich-lab/biolm_utils)
-- Open an issue on the [RNA Saluki CNN repository](https://github.com/dieterich-lab/rna_saluki_cnn) for bugs or feature requests
+## License

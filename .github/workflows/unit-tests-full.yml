@@ -1,0 +1,55 @@
+name: unit-tests-full
+
+on:
+  pull_request:
+    branches: [ main, refactor-config-management ]
+  push:
+    branches: [ main, refactor-config-management ]
+
+jobs:
+  tests-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.10, 3.11, 3.12]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Poetry and deps (dev)
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+          poetry config virtualenvs.in-project true --local || true
+          poetry install --no-interaction --with dev
+      - name: Run full test-suite
+        run: |
+          pytest -q
+
+  nightly-heavy-tests:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    schedule:
+      # Weekly run to exercise heavier integration tests that are expensive
+      - cron: '0 3 * * 0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install Poetry and deps (attempt CPU wheels for torch)
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+          poetry config virtualenvs.in-project true --local || true
+          # install base deps then install extra CPU wheels for torch via poetry's run pip
+          poetry install --no-interaction --with dev
+          poetry run pip install --extra-index-url https://download.pytorch.org/whl/cpu torch --upgrade
+      - name: Run heavy tests (slow)
+        run: |
+          pytest -q

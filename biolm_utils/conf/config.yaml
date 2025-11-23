@@ -1,0 +1,85 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - mode: tokenize
+
+# Core settings
+mode: tokenize
+outputpath: null
+task: null
+
+# Data source (will be overridden by mode-specific defaults)
+data_source:
+  filepath: null
+  stripheader: false
+  columnsep: "\t"
+  tokensep: ","
+  specifiersep: null
+  idpos: null
+  seqpos: null
+  labelpos: null
+  crossvalidation: null
+  splitratio: null
+  splitpos: null
+  devsplits: null
+  testsplits: null
+
+# Tokenization settings
+tokenization:
+  samplesize: null
+  encoding: atomic
+  lefttailing: false
+  vocabsize: 20000
+  minfreq: 2
+  maxtokenlength: 10
+  atomicreplacements: null
+
+# Training settings
+training:
+  learning_rate: 0.0001
+  seed: 42
+  batchsize: 8
+  gradacc: 4
+  blocksize: 12288
+  nepochs: 100
+  patience: 10
+  resume: false
+  scaling: log
+  weightedregression: false
+
+# Inference settings
+inference:
+  pretrainedmodel: null
+  looscores:
+    handletokens: null
+    replacementdict: null
+    replacespecifier: false
+
+# Settings (for advanced configurations)
+
+# Data pre-processing options (kept under settings for plugin-level controls)
+settings:
+  data_pre_processing:
+    centertoken: false
+    only512: false
+    _3utr: false
+    non3utr: false
+    nomarkers: false
+    weightpos: null
+  # Optional MLflow integration (disabled by default). Enable and set tracking_uri
+  # / experiment_name for per-run logging.
+  mlflow:
+    enabled: false
+    tracking_uri: null
+    experiment_name: null
+    log_artifacts: true
+    run_name_template: null
+
+# Debugging settings
+debugging:
+  silent: false
+  dev: false
+  getdata: false
+  forcenewdata: false
+  accelerator: gpu

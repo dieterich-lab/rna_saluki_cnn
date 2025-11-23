@@ -1,0 +1,36 @@
+# @package _global_
+
+# Fine-tune specific settings
+task: regression
+data_source:
+  filepath: null
+  stripheader: false
+  columnsep: "\t"
+  tokensep: ","
+  specifiersep: null
+  idpos: 1
+  seqpos: 1
+  labelpos: 1
+  crossvalidation: false
+  splitratio: [80, 10, 10]
+  splitpos: null
+  devsplits: null
+  testsplits: null
+training:
+  learning_rate: 0.0001
+  seed: 42
+  batchsize: 8
+  gradacc: 4
+  blocksize: 12288
+  nepochs: 100
+  patience: 10
+  resume: false
+  scaling: log
+  weightedregression: false
+settings:
+  mlflow:
+    enabled: false
+    tracking_uri: null
+    experiment_name: null
+    log_artifacts: true
+    run_name_template: null
