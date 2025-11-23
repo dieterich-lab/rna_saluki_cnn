@@ -77,7 +77,7 @@ git subtree pull --prefix=biolm_utils biolm_upstream main --squash
 ### GPU selection
 GPU usage is auto-configured by the framework. When `debugging.accelerator=gpu` (the default), the system will auto-detect the number of available GPUs and apply a restriction that results in a power-of-two count (1, 2, 4, 8, ...).
 
-- The runtime GPU count is always auto-detected and placed into `debugging.detected_ngpus` in the final namespace returned by `load_config()`.
+- The runtime GPU count is always auto-detected and placed into `debugging.detected_ngpus` in the final structured configuration (BioLMConfig) returned by `load_config()`.
 - Do not attempt to set explicit GPU counts via `settings.environment.ngpus` or `debugging.ngpus`—these legacy keys are no longer supported and will raise an error.
 
 If you need to explicitly force CPU usage, set `debugging.accelerator=cpu` to run on CPU only.
@@ -117,8 +117,10 @@ The legacy `ngpus` option has been removed (e.g., `settings.environment.ngpus` o
 To read the auto-detected value programmatically from Python:
 
 ```python
-from biolm_utils.params import get_detected_ngpus
-detected = get_detected_ngpus(args)
+from biolm_utils.params import get_detected_ngpus, load_config
+# The loader now returns a structured BioLMConfig dataclass instance.
+cfg = load_config([])
+detected = get_detected_ngpus(cfg)
 ```
 
 If you make changes in `biolm_utils` locally and want to push them upstream (you need write access to upstream), use:

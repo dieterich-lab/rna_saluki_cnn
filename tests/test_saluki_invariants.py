@@ -26,11 +26,17 @@ class DummyDataset:
 
 
 def _make_args(blocksize=None, encoding=None):
-    # simple namespace used by get_config and dataset init validation
-    ns = types.SimpleNamespace()
-    ns.blocksize = blocksize
-    ns.encoding = encoding
-    return ns
+    # Use the structured BioLMConfig for test inputs (legacy untyped namespace objects are deprecated)
+    from biolm_utils.structured_config import (
+        BioLMConfig,
+        TokenizationConfig,
+        TrainingConfig,
+    )
+
+    return BioLMConfig(
+        tokenization=TokenizationConfig(encoding=encoding),
+        training=TrainingConfig(blocksize=blocksize),
+    )
 
 
 def test_hfsaluki_get_config_rejects_custom_blocksize():

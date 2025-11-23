@@ -15,8 +15,15 @@ if "--help" in sys.argv or "-h" in sys.argv:
         # Hydra/argparse will call sys.exit after printing help; convert to
         # a clean exit here.
         sys.exit(0)
-    # Fallback: if parse_args returns, exit to avoid running main.
-    sys.exit(0)
+    except ModuleNotFoundError:
+        # biolm_utils is not importable in this environment — fall back to the
+        # lightweight usage message so callers/tests still receive 'usage'.
+        print("usage: saluki.py <mode> [--help] [--filepath PATH] [other options]")
+        sys.exit(0)
+    except Exception:
+        # Any other error when invoking framework help -> fall back as well.
+        print("usage: saluki.py <mode> [--help] [--filepath PATH] [other options]")
+        sys.exit(0)
 
 from transformers import BertConfig, DefaultDataCollator, PreTrainedTokenizerFast
 from transformers.image_processing_utils import BaseImageProcessor

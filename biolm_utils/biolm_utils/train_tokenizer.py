@@ -16,11 +16,30 @@ from biolm_utils.rna_datasets import RNABaseDataset
 
 
 def tokenize(args):
-    file_path = Path(args.filepath)
-    if args.samplesize is not None:
+    # Prefer nested fields when present (data_source / tokenization) but
+    # fall back to legacy top-level values for backwards compatibility.
+    file_path = Path(
+        getattr(
+            getattr(args, "data_source", None),
+            "filepath",
+            getattr(args, "filepath", ""),
+        )
+    )
+    if (
+        getattr(
+            getattr(args, "tokenization", None),
+            "samplesize",
+            getattr(args, "samplesize", None),
+        )
+        is not None
+    ):
 
         sample_file_path = (
-            file_path.parent / (file_path.stem + f"_{args.samplesize}_samples")
+            file_path.parent
+            / (
+                file_path.stem
+                + f"_{getattr(getattr(args, 'tokenization', None), 'samplesize', getattr(args, 'samplesize', None))}_samples"
+            )
         ).with_suffix(file_path.suffix)
 
         with open(args.filepath) as f:
@@ -30,7 +49,14 @@ def tokenize(args):
                 newlines.append(f.tell())
                 line = f.readline()
             random.seed(0)
-            sample_new_lines = random.sample(newlines, args.samplesize)
+            sample_new_lines = random.sample(
+                newlines,
+                getattr(
+                    getattr(args, "tokenization", None),
+                    "samplesize",
+                    getattr(args, "samplesize", None),
+                ),
+            )
             sample_lines = list()
             for l in sorted(sample_new_lines):
                 f.seek(l)
@@ -42,26 +68,39 @@ def tokenize(args):
 
         file_path = sample_file_path
 
-    if args.encoding == "bpe":
+    encoding = getattr(
+        getattr(args, "tokenization", None),
+        "encoding",
+        getattr(args, "encoding", "atomic"),
+    )
+
+    if encoding == "bpe":
         tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-    elif args.encoding == "atomic":
+    elif encoding == "atomic":
         tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
 
     # normalization and pre-encoding.
     tok_seq = list()
-    if args.encoding not in ["3mer", "5mer"]:
+    if encoding not in ["3mer", "5mer"]:
         # Normalization for Byte Pair Encoding
         norm_seq = list()
 
         # Replace multi-char markers by ASCII character.
-        if args.atomicreplacements is not None:
-            for k, v in eval(args.atomicreplacements).items():
-                if args.tokensep is not None:
+        atomicreplacements = getattr(
+            getattr(args, "tokenization", None),
+            "atomicreplacements",
+            getattr(args, "atomicreplacements", None),
+        )
+        if atomicreplacements is not None:
+            for k, v in eval(atomicreplacements).items():
+                tokensep = getattr(
+                    getattr(args, "data_source", None),
+                    "tokensep",
+                    getattr(args, "tokensep", None),
+                )
+                if tokensep is not None:
                     norm_seq.append(
-                        Replace(
-                            f"{args.tokensep}{k}{args.tokensep}",
-                            f"{args.tokensep}{v}{args.tokensep}",
-                        )
+                        Replace(f"{tokensep}{k}{tokensep}", f"{tokensep}{v}{tokensep}")
                     )
                     norm_seq.append(
                         Replace(
@@ -80,20 +119,28 @@ def tokenize(args):
                     norm_seq.append(Replace(k, v))
 
         # Replace the specific information.
-        if args.specifiersep is not None:
-            norm_seq.append(
-                Replace(Regex(rf"{args.specifiersep}[^{args.tokensep}]*"), "")
-            )
+        specsep = getattr(
+            getattr(args, "data_source", None),
+            "specifiersep",
+            getattr(args, "specifiersep", None),
+        )
+        tokensep = getattr(
+            getattr(args, "data_source", None),
+            "tokensep",
+            getattr(args, "tokensep", None),
+        )
+        if specsep is not None:
+            norm_seq.append(Replace(Regex(rf"{specsep}[^{tokensep}]*"), ""))
 
         # Now join the lines based on the token separator.
-        if args.encoding == "bpe":
-            if args.tokensep is not None:
-                norm_seq.append(Replace(args.tokensep, ""))
+        if encoding == "bpe":
+            if tokensep is not None:
+                norm_seq.append(Replace(tokensep, ""))
             tok_seq.append(pre_tokenizers.ByteLevel(add_prefix_space=True))
             tokenizer.decoder = decoders.ByteLevel()
-        elif args.encoding == "atomic":
-            if args.tokensep is not None:
-                norm_seq.append(Replace(args.tokensep, " "))
+        elif encoding == "atomic":
+            if tokensep is not None:
+                norm_seq.append(Replace(tokensep, " "))
             else:
                 tok_seq.append(Split(pattern=Regex("."), behavior="isolated"))
 
@@ -101,7 +148,7 @@ def tokenize(args):
         norm_seq.append(Replace('"', ""))
 
         tokenizer.normalizer = Normseq(norm_seq)
-    elif args.encoding in ["3mer", "5mer"]:
+    elif encoding in ["3mer", "5mer"]:
         # The 3mer/5mer processing is too complex to be implemented with the tokenizer regex patterns.
         # We therefore open the file, process the k-merization with regular regex patterns and write the results to a temporary file.
         # The actual tokenizer is then just a white space tokenizer.
@@ -112,7 +159,12 @@ def tokenize(args):
                 for line in f.read().splitlines()
                 if (len(line) > 0 and not line.isspace())
             ]
-            sample_lines = [x.split(args.columnsep)[-1] for x in sample_lines]
+            sample_lines = [
+                x.split(getattr(getattr(args, "data_source", None), "columnsep", "\t"))[
+                    -1
+                ]
+                for x in sample_lines
+            ]
             # TODO: adapt this with to new separation options
             split_lines = RNABaseDataset.tokenize_kmers(sample_lines, args)
 
@@ -123,16 +175,14 @@ def tokenize(args):
     pre_seq.append(Split(pattern="\n", behavior="removed"))
 
     # removing metadata left
-    pre_seq.append(
-        Split(
-            pattern=Regex(
-                f"([^{args.columnsep}]*{args.columnsep}){{{int(args.seqpos) - 1}}}"
-            ),
-            behavior="removed",
-        )
-    )
+    # compute column separator and how many tokens to skip (seqpos defaults to 1)
+    colsep = getattr(getattr(args, "data_source", None), "columnsep", "\t")
+    seqpos_count = int(getattr(getattr(args, "data_source", None), "seqpos", 1)) - 1
+    pattern_left = f"([^{colsep}]*{colsep})" + "{" + str(seqpos_count) + "}"
+    pre_seq.append(Split(pattern=Regex(pattern_left), behavior="removed"))
     # removing metadata right
-    pre_seq.append(Split(pattern=Regex(f"{args.columnsep}.*"), behavior="removed"))
+    pattern_right = f"{colsep}.*"
+    pre_seq.append(Split(pattern=Regex(pattern_right), behavior="removed"))
 
     # Create an actual pre-tokenization sequence.
     seq = Sequence(pre_seq + tok_seq)
@@ -142,21 +192,37 @@ def tokenize(args):
     SPECIALTOKENS = ["[UNK]", "[PAD]", "[CLS]", "[SEP]", "[MASK]", "[BOS]", "[EOS]"]
 
     # Either use Byte-Pair Encoding or a whitespace encoder (for the k-mers).
-    if args.encoding == "bpe":
+    if encoding == "bpe":
         trainer = trainers.BpeTrainer(
-            min_frequency=args.minfreq,
-            max_token_length=args.maxtokenlength,
+            min_frequency=getattr(
+                getattr(args, "tokenization", None),
+                "minfreq",
+                getattr(args, "minfreq", 2),
+            ),
+            max_token_length=getattr(
+                getattr(args, "tokenization", None),
+                "maxtokenlength",
+                getattr(args, "maxtokenlength", 10),
+            ),
             initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
             special_tokens=SPECIALTOKENS,
         )
     else:
         trainer = trainers.WordLevelTrainer(
             special_tokens=SPECIALTOKENS,
-            vocab_size=args.vocabsize,
-            min_frequency=args.minfreq,
+            vocab_size=getattr(
+                getattr(args, "tokenization", None),
+                "vocabsize",
+                getattr(args, "vocabsize", 20000),
+            ),
+            min_frequency=getattr(
+                getattr(args, "tokenization", None),
+                "minfreq",
+                getattr(args, "minfreq", 2),
+            ),
         )
 
-    if args.encoding in ["3mer", "5mer"]:
+    if encoding in ["3mer", "5mer"]:
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write("\n".join([" ".join(x) for x in split_lines]).encode())
             logging.info(f"Tokenizing {file_path} with temp file {tmp.name}")

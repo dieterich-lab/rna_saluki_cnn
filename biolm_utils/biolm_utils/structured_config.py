@@ -80,44 +80,10 @@ class BioLMConfig:
     settings: Optional[SettingsConfig] = None
     debugging: DebuggingConfig = field(default_factory=DebuggingConfig)
 
-    def to_namespace(self) -> argparse.Namespace:
-        """Convert the config to an argparse.Namespace for backward compatibility."""
-        # Flatten the config to match the old structure
-        flat = {}
-
-        # Add top-level fields
-        flat["mode"] = self.mode
-        flat["outputpath"] = cast(
-            Any, str(self.outputpath) if self.outputpath else None
-        )
-        flat["task"] = cast(Any, self.task)
-
-        # Handle nested structures
-        if self.data_source:
-            for k, v in self.data_source.__dict__.items():
-                flat[k] = v
-        if self.tokenization:
-            for k, v in self.tokenization.__dict__.items():
-                flat[k] = v
-        if self.training:
-            for k, v in self.training.__dict__.items():
-                flat[k] = v
-        if self.inference:
-            for k, v in self.inference.__dict__.items():
-                flat[k] = v
-        if self.debugging:
-            for k, v in self.debugging.__dict__.items():
-                flat[k] = v
-
-        # Backward compatibility: check for ngpus in settings.environment
-        if (
-            self.settings
-            and self.settings.environment
-            and "ngpus" in self.settings.environment
-        ):
-            flat["ngpus"] = self.settings.environment["ngpus"]
-
-        return argparse.Namespace(**flat)
+    # NOTE: this project moved to a strict dataclass-backed config object.
+    # The legacy `to_namespace()` helper that produced a flattened
+    # argparse.Namespace for backward compatibility has been removed on
+    # purpose — callers should use the `BioLMConfig` dataclass directly.
 
 
 # ConfigStore registration removed for simplicity

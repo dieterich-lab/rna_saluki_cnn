@@ -104,7 +104,7 @@ def _validate_config(cfg: BioLMConfig) -> None:
                     )
 
 
-def load_config(overrides: Optional[List[str]] = None) -> argparse.Namespace:
+def load_config(overrides: Optional[List[str]] = None) -> BioLMConfig:
     """
     Load configuration using Hydra programmatically with best practices.
 
@@ -112,7 +112,7 @@ def load_config(overrides: Optional[List[str]] = None) -> argparse.Namespace:
         overrides: List of configuration overrides in the format 'key=value'
 
     Returns:
-        argparse.Namespace for backward compatibility with existing code
+        BioLMConfig dataclass instance representing the resolved configuration
 
     Raises:
         ValueError: If configuration is invalid or cannot be loaded
@@ -161,7 +161,7 @@ def load_config(overrides: Optional[List[str]] = None) -> argparse.Namespace:
             with open_dict(cfg):
                 cfg.mode = mode
 
-            # Process and validate
+            # Process, validate and return a structured BioLMConfig
             return _process_hydra_config(cfg)
 
     except Exception as e:
@@ -173,17 +173,17 @@ def load_config(overrides: Optional[List[str]] = None) -> argparse.Namespace:
 
 
 @hydra.main(config_path="../conf", config_name="config", version_base="1.1")
-def parse_args(cfg: DictConfig) -> argparse.Namespace:
+def parse_args(cfg: DictConfig) -> BioLMConfig:
     """
-    Parses configuration using Hydra CLI and returns argparse.Namespace for backward compatibility.
+    Parse configuration using Hydra CLI and return a structured BioLMConfig.
 
-    This is the entry point when called via Hydra CLI (e.g., python script.py mode=fine-tune task=regression).
+    This is the Hydra CLI entry point (e.g., `python script.py mode=fine-tune task=regression`).
 
     Args:
         cfg: Hydra DictConfig object
 
     Returns:
-        argparse.Namespace for backward compatibility
+        BioLMConfig instance representing the parsed and validated configuration
     """
     try:
         return _process_hydra_config(cfg)
@@ -192,15 +192,15 @@ def parse_args(cfg: DictConfig) -> argparse.Namespace:
         raise
 
 
-def _process_hydra_config(cfg: DictConfig) -> argparse.Namespace:
+def _process_hydra_config(cfg: DictConfig) -> BioLMConfig:
     """
-    Process a Hydra DictConfig into our structured config and return argparse.Namespace.
+    Convert a Hydra DictConfig into the structured `BioLMConfig` dataclass.
 
     Args:
         cfg: Hydra configuration object
 
     Returns:
-        argparse.Namespace for backward compatibility
+        BioLMConfig - validated, nested dataclass representation of the config
 
     Raises:
         ValueError: If configuration validation fails
@@ -294,11 +294,32 @@ def _process_hydra_config(cfg: DictConfig) -> argparse.Namespace:
         # Validate the configuration
         _validate_config(biolm_cfg)
 
-        # Convert to namespace for backward compatibility
-        return biolm_cfg.to_namespace()
+        # Return the structured configuration object (no flattened Namespace)
+        return biolm_cfg
 
     except ValidationError as e:
         raise ValueError(f"Configuration validation failed: {e}") from e
     except Exception as e:
         logger.error(f"Configuration processing failed: {e}")
         raise RuntimeError(f"Failed to process configuration: {e}") from e
+
+
+def get_detected_ngpus(args: BioLMConfig) -> int:
+    """Return the number of detected GPUs.
+
+    This helper deliberately accepts the structured config object (or any
+    object exposing a debugging.accelerator attribute) to keep code simple.
+    """
+    try:
+        # Only attempt GPU probing when GPU accelerator explicitly requested.
+        accel = getattr(getattr(args, "debugging", None), "accelerator", None)
+        if accel != "gpu":
+            return 0
+        import torch
+
+        return max(0, torch.cuda.device_count())
+    except Exception:
+        # If PyTorch isn't available or probing fails, fall back to 0 GPUs.
+        return 0
+
+    # end _process_hydra_config

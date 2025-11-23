@@ -34,6 +34,24 @@ from biolm_utils.train_utils import (
     get_trainer,
 )
 
+# Compatibility helpers for structured config vs legacy flat attribute access
+data_source = getattr(args, "data_source", None)
+training = getattr(args, "training", None)
+debugging = getattr(args, "debugging", None)
+
+
+def t_get(key, default=None):
+    if training is not None and hasattr(training, key):
+        return getattr(training, key)
+    return getattr(args, key, default)
+
+
+def d_get(key, default=None):
+    if debugging is not None and hasattr(debugging, key):
+        return getattr(debugging, key)
+    return getattr(args, key, default)
+
+
 # --- Configuration & Setup ---
 
 SEED = 0
@@ -87,31 +105,41 @@ def _get_num_labels(mode, task, dataset):
 
 def _build_training_args(model_save_path, val_dataset, config):
     """Builds the TrainingArguments for the main training loop."""
-    eval_batch_size = args.batchsize
-    if val_dataset and args.batchsize > len(val_dataset):
+    eval_batch_size = t_get("batchsize", getattr(args, "batchsize", None))
+    if val_dataset and eval_batch_size and eval_batch_size > len(val_dataset):
         eval_batch_size = len(val_dataset)
 
-    is_pre_train = args.mode == "pre-train"
-    load_best = not args.dev and not is_pre_train
-    save_strategy = "epoch" if not args.dev else "no"
-    eval_strategy = "epoch" if args.mode != "pre-train" else "no"
+    is_pre_train = getattr(args, "mode", None) == "pre-train"
+    load_best = not d_get("dev", False) and not is_pre_train
+    save_strategy = "epoch" if not d_get("dev", False) else "no"
+    eval_strategy = "epoch" if getattr(args, "mode", None) != "pre-train" else "no"
 
-    num_epochs = int(args.resume) if not isinstance(args.resume, bool) else args.nepochs
+    resume_val = getattr(args, "resume", None)
+    resume_val = resume_val if resume_val is not None else t_get("resume", None)
+    num_epochs = (
+        int(resume_val)
+        if (resume_val is not None and not isinstance(resume_val, bool))
+        else t_get("nepochs", getattr(args, "nepochs", None))
+    )
 
     return TrainingArguments(
         output_dir=str(model_save_path),
         overwrite_output_dir=True,
         num_train_epochs=num_epochs,
-        per_device_train_batch_size=args.batchsize,
+        per_device_train_batch_size=t_get(
+            "batchsize", getattr(args, "batchsize", None)
+        ),
         per_device_eval_batch_size=eval_batch_size,
         gradient_accumulation_steps=GRADACC,
-        save_total_limit=1 if not args.dev else 0,
+        save_total_limit=1 if not d_get("dev", False) else 0,
         load_best_model_at_end=load_best,
         evaluation_strategy=eval_strategy,
         save_strategy=save_strategy,
         logging_strategy="steps" if is_pre_train else "epoch",
         disable_tqdm=True,
-        log_level="critical" if args.silent else "info",
+        log_level=(
+            "critical" if d_get("silent", getattr(args, "silent", False)) else "info"
+        ),
         logging_dir=str(TBPATH),
         warmup_ratio=0.05 if is_pre_train else 0.0,
         remove_unused_columns=False,
@@ -127,25 +155,18 @@ def _build_training_args(model_save_path, val_dataset, config):
 
 def _build_test_args(model_load_path, test_dataset):
     """Builds the TrainingArguments for testing/prediction."""
-<<<<<<< HEAD
     detected_gpus = get_detected_ngpus(args)
     if detected_gpus > 1:
-=======
-    detected_gpus = get_detected_ngpus(args)
-    if detected_gpus > 1:
->>>>>>> a13805217e2894eb9adcda5bd95ba5340cb8e9d2
         logging.warning(
             "Running inference on %d GPUs. This may drop samples if "
             "the dataset size is not divisible by the batch size. "
             "Consider using a single GPU for complete evaluation.",
-<<<<<<< HEAD
             detected_gpus,
-=======
-            ngpus,
->>>>>>> a13805217e2894eb9adcda5bd95ba5340cb8e9d2
         )
 
-    test_batch_size = min(args.batchsize, len(test_dataset))
+    test_batch_size = min(
+        t_get("batchsize", getattr(args, "batchsize", 1)), len(test_dataset)
+    )
 
     return TrainingArguments(
         output_dir=str(model_load_path),
@@ -153,7 +174,9 @@ def _build_test_args(model_load_path, test_dataset):
         do_predict=True,
         per_device_eval_batch_size=test_batch_size,
         dataloader_drop_last=detected_gpus > 1,
-        log_level="critical" if args.silent else "info",
+        log_level=(
+            "critical" if d_get("silent", getattr(args, "silent", False)) else "info"
+        ),
         disable_tqdm=True,
         remove_unused_columns=False,
         label_names=["labels"],
@@ -177,8 +200,12 @@ def train(
     config,
 ):
     """Handles the model training loop."""
-    trainer_cls = _get_trainer_class(args.mode, args.task)
-    num_labels = _get_num_labels(args.mode, args.task, full_dataset)
+    trainer_cls = _get_trainer_class(
+        getattr(args, "mode", None), getattr(args, "task", None)
+    )
+    num_labels = _get_num_labels(
+        getattr(args, "mode", None), getattr(args, "task", None), full_dataset
+    )
 
     model = get_model_and_config(
         args=args,
@@ -198,7 +225,9 @@ def train(
     training_args = _build_training_args(model_save_path, val_dataset, config)
 
     compute_metrics = (
-        None if args.mode == "pre-train" else METRIC(full_dataset, model_save_path)
+        None
+        if getattr(args, "mode", None) == "pre-train"
+        else METRIC(full_dataset, model_save_path)
     )
     labels = getattr(full_dataset, "labels", None)
 
@@ -216,11 +245,11 @@ def train(
     )
 
     num_epochs_trained = 0
-    if args.resume is True:
+    if getattr(args, "resume", False) is True or t_get("resume", False) is True:
         logging.info(f"Resuming training from checkpoint: {CHECKPOINTPATH}")
         train_result = trainer.train(resume_from_checkpoint=str(CHECKPOINTPATH))
     else:
-        if not isinstance(args.resume, bool):
+        if not isinstance(getattr(args, "resume", t_get("resume", False)), bool):
             trainer._load_from_checkpoint(model_save_path)
             state_path = model_save_path / "trainer_state.json"
             trainer.state = TrainerState.load_from_json(state_path)
@@ -240,7 +269,7 @@ def train(
 
     train_metrics = train_result.metrics
     train_metrics["train_samples"] = len(train_dataset)
-    if args.mode == "pre-train":
+    if getattr(args, "mode", None) == "pre-train":
         try:
             train_metrics["perplexity"] = np.exp(train_metrics["train_loss"])
         except OverflowError:
@@ -249,7 +278,7 @@ def train(
     trainer.save_metrics("train", train_metrics)
 
     eval_metrics = {}
-    if args.mode != "pre-train":
+    if getattr(args, "mode", None) != "pre-train":
         with open(model_save_path / "scaler.pkl", "wb") as f:
             pickle.dump(model.scaler, f)
 
@@ -280,7 +309,9 @@ def test(
     model,
 ):
     """Handles the model testing and prediction."""
-    trainer_cls = _get_trainer_class(args.mode, args.task)
+    trainer_cls = _get_trainer_class(
+        getattr(args, "mode", None), getattr(args, "task", None)
+    )
 
     if model is None:
         num_labels = _get_num_labels(args.mode, args.task, test_dataset.dataset)
@@ -322,7 +353,7 @@ def test(
     metric_key = {
         "regression": "test_spearman rho",
         "classification": "test_f1",
-    }.get(args.task)
+    }.get(getattr(args, "task", None))
 
     return test_results.metrics.get(metric_key, 0.0)
 
@@ -334,7 +365,7 @@ def main():
     """Main execution entry point."""
     config = get_config()
 
-    if args.mode == "tokenize":
+    if getattr(args, "mode", None) == "tokenize":
         tokenize(args)
         return
 
@@ -370,16 +401,16 @@ def main():
             "predict": config.MODEL_CLS_FOR_FINETUNING,
             "interpret": config.MODEL_CLS_FOR_FINETUNING,
         }
-        model_cls = model_cls_map.get(args.mode)
+        model_cls = model_cls_map.get(getattr(args, "mode", None))
         if model_cls is None:
             raise ValueError(f"Unknown mode: '{args.mode}'.")
 
-        if args.mode == "pre-train":
+        if getattr(args, "mode", None) == "pre-train":
             data_collator = config.DATACOLLATOR_CLS_FOR_PRETRAINING(tokenizer=tokenizer)
         else:  # fine-tune, predict, interpret
             data_collator = DefaultDataCollator()
 
-        if args.mode in ["pre-train", "fine-tune"]:
+        if getattr(args, "mode", None) in ["pre-train", "fine-tune"]:
             results, model = train(
                 train_dataset=train_dataset,
                 val_dataset=val_dataset,
@@ -392,7 +423,7 @@ def main():
                 model_cls=model_cls,
                 config=config,
             )
-            if args.mode == "fine-tune" and test_dataset:
+            if getattr(args, "mode", None) == "fine-tune" and test_dataset:
                 results = test(
                     model=model,
                     test_dataset=test_dataset,
@@ -408,7 +439,7 @@ def main():
                 )
             return results
 
-        elif args.mode == "predict":
+        elif getattr(args, "mode", None) == "predict":
             return test(
                 test_dataset=test_dataset,
                 data_collator=data_collator,
@@ -422,7 +453,7 @@ def main():
                 config=config,
             )
 
-        elif args.mode == "interpret":
+        elif getattr(args, "mode", None) == "interpret":
             return loo_scores(
                 args=args,
                 tokenizer=tokenizer,

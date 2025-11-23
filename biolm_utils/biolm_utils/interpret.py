@@ -25,8 +25,43 @@ def loo_scores(
     remove_first_last,
 ):
     config = get_config()
-    pkl_file = output_path / f"loo_scores_{args.handletokens}.pkl"
-    csv_file = output_path / f"loo_scores_{args.handletokens}.csv"
+
+    # Structured-config compatibility helpers
+    data_source = getattr(args, "data_source", None)
+    tokenization = getattr(args, "tokenization", None)
+    inference_cfg = getattr(args, "inference", None)
+    debugging = getattr(args, "debugging", None)
+
+    def ds_get(key, default=None):
+        if data_source is not None and hasattr(data_source, key):
+            return getattr(data_source, key)
+        return getattr(args, key, default)
+
+    def tk_get(key, default=None):
+        if tokenization is not None and hasattr(tokenization, key):
+            return getattr(tokenization, key)
+        return getattr(args, key, default)
+
+    def debug_get(key, default=None):
+        if debugging is not None and hasattr(debugging, key):
+            return getattr(debugging, key)
+        return getattr(args, key, default)
+
+    def inf_loose_get(key, default=None):
+        if inference_cfg is not None:
+            loos = getattr(inference_cfg, "looscores", None)
+            if isinstance(loos, dict) and key in loos:
+                return loos.get(key)
+        return getattr(args, key, default)
+
+    pkl_file = (
+        output_path
+        / f"loo_scores_{inf_loose_get('handletokens', getattr(args, 'handletokens', None))}.pkl"
+    )
+    csv_file = (
+        output_path
+        / f"loo_scores_{inf_loose_get('handletokens', getattr(args, 'handletokens', None))}.csv"
+    )
 
     test_idx = test_dataset.indices
 
@@ -56,12 +91,14 @@ def loo_scores(
         tokenizer,
         OHE=test_dataset.dataset.OHE,
         specs=test_dataset.dataset.specs,
-        specifiersep=args.specifiersep,
-        tokensep=args.tokensep,
+        specifiersep=ds_get("specifiersep", getattr(args, "specifiersep", None)),
+        tokensep=ds_get("tokensep", getattr(args, "tokensep", None)),
     )
 
     for i, test_id in enumerate(
-        test_idx[: len(test_idx) if not args.dev else args.dev]
+        test_idx[
+            : len(test_idx) if not debug_get("dev", False) else debug_get("dev", False)
+        ]
     ):
         seq = test_dataset.dataset.lines[test_id]
         loo_score, rescaled_pred, token_list, replacements = (
@@ -69,12 +106,22 @@ def loo_scores(
                 text=seq,
                 id=test_id,
                 remove_first_last=remove_first_last,
-                handle_tokens=args.handletokens,
+                handle_tokens=inf_loose_get(
+                    "handletokens", getattr(args, "handletokens", None)
+                ),
                 scaler=model.scaler,
-                batch_size=args.batchsize,
-                replacement_dict=args.replacementdict,
-                replacespecifier=args.replacespecifier,
-                dev=args.dev,
+                batch_size=getattr(
+                    getattr(args, "training", None),
+                    "batchsize",
+                    getattr(args, "batchsize", None),
+                ),
+                replacement_dict=inf_loose_get(
+                    "replacementdict", getattr(args, "replacementdict", None)
+                ),
+                replacespecifier=inf_loose_get(
+                    "replacespecifier", getattr(args, "replacespecifier", None)
+                ),
+                dev=debug_get("dev", False),
             )
         )
         token_list = [x.replace("Ġ", "") for x in token_list]
@@ -117,7 +164,7 @@ def loo_scores(
         pos = 0
         for k, (token, l) in enumerate(zip(token_list, poss)):
             if replacements is not None:
-                if args.encoding == "atomic":
+                if tk_get("encoding", getattr(args, "encoding", None)) == "atomic":
                     starts.append(l)
                     ends.append(l + 1)
                 else:

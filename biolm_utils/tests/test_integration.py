@@ -37,7 +37,7 @@ def mock_config():
         MODEL_CLS_FOR_PRETRAINING=mock_model_cls,
         MODEL_CLS_FOR_FINETUNING=mock_model_cls,
         TOKENIZER_CLS=mock_tokenizer_cls,
-        LEARNINGRATE=1e-3,
+        learning_rate=1e-3,
         MAX_GRAD_NORM=0.4,
         WEIGHT_DECAY=0.001,
         SPECIAL_TOKENIZER_FOR_TRAINER_CLS=MagicMock(),
