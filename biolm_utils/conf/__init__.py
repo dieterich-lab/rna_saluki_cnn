@@ -1,1 +1,0 @@
-# Config directory for Hydra
