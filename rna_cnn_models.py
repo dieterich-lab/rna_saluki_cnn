@@ -28,6 +28,8 @@ class SalukiModel(PreTrainedModel):
 
     def forward(self, *args, **kwargs):
         raise NotImplementedError("SalukiModel is a placeholder and not runnable")
+
+
 import torch.nn as nn
 from transformers import PreTrainedModel
 

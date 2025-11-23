@@ -29,6 +29,8 @@ class SalukiDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Any:
         return self._items[idx]
+
+
 import numpy as np
 import torch
 from sklearn.preprocessing import OneHotEncoder

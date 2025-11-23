@@ -1,0 +1,46 @@
+name: Quick example smoke test
+
+on:
+  push:
+    branches: [ main, refactor-config-management ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  example-smoke:
+    name: Run plugin tests + quick example smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: python -m pip install --upgrade pip poetry
+
+      - name: Install dependencies
+        # We install into the current runner env so tests and `python examples/...` run
+        run: |
+          poetry config virtualenvs.create false
+          poetry install --no-interaction --no-ansi
+
+      - name: Install framework package (biolm_utils)
+        # Install the framework from the refactor-config-management branch so
+        # the plugin tests run against the real framework package instead of
+        # any embedded copy.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-deps "git+https://github.com/dieterich-lab/biolm_utils.git@refactor-config-management#egg=biolm_utils"
+
+      - name: Run the quick example test
+        run: |
+          # Run only the smoke test that ensures the example script executes successfully
+          python -m pytest -q tests/test_quick_train_script.py
+
+      - name: Run the example script directly
+        # Execute the real example as a final smoke check
+        run: python examples/quick_train_saluki.py

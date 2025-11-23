@@ -55,6 +55,48 @@ The recommended layout is to keep the *framework* (biolm_utils) and *plugins* (e
 
 We include a thin example plugin here under `examples/plugin_template` and `saluki.py` demonstrates a thin Saluki wrapper that registers the plugin with the registry and exposes a small `activate()` helper for tests and wrappers.
 
+### Packaging / entry-point
+
+You can package this repository (or the `saluki_plugin` subpackage) so it exposes a
+`biolm_utils.plugins` entry-point. For local development you can install the
+plugin in editable mode:
+
+```bash
+# editable install (pip)
+pip install -e .
+# or install the example plugin in this repo directly
+pip install -e ./saluki_plugin
+```
+
+After installation the framework can discover the plugin using the
+`discover_entrypoint_plugins()` helper or by calling the framework's
+integration helpers (e.g., a CLI that calls discovery during startup).
+
+### Quickstart — simulate training with Saluki (programmatic)
+
+After you install the plugin into your environment (editable install during dev), you can run a minimal smoke training run that exercises the framework and the plugin registration. This demonstrates an end-to-end invocation without heavy datasets or long runtimes.
+
+1. Install the plugin in editable mode:
+
+```bash
+cd /path/to/rna_saluki_cnn
+.venv/bin/python -m pip install -e ./saluki_plugin
+```
+
+2. Run a small Python script to train a tiny model via biolm_utils (see demo in `examples/quick_train_saluki.py`):
+
+```bash
+.venv/bin/python examples/quick_train_saluki.py
+```
+
+Note: when executed as a file, Python sets the import search path to the script's
+directory which can hide packages in the repository root. The example script now
+adds the repo root to sys.path automatically so it should work when invoked as
+above. If you still hit import issues, run the script from the project root and
+ensure the environment is using the project venv (or set PYTHONPATH=.).
+
+The demo will perform a tiny training epoch (smoke) and should finish quickly. If everything succeeds, your plugin is correctly discoverable and compatible with the framework.
+
 
 ## Output layout
 
