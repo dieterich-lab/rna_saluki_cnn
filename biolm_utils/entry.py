@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from transformers.trainer import Trainer
 
-from biolm_utils.params import load_config
+from biolm_utils.params import get_detected_ngpus, load_config
 from biolm_utils.train_utils import (
     compute_metrics_for_classification,
     compute_metrics_for_regression,
@@ -17,16 +17,42 @@ from biolm_utils.trainer import (
     WeightedSamplingTrainer,
 )
 
-# Get the arguments from the command line.
+# Get the configuration (returns a BioLMConfig dataclass)
 args = load_config()
+
+# Compatibility helpers: prefer nested structured fields, fallback to legacy
+data_source = getattr(args, "data_source", None)
+training = getattr(args, "training", None)
+debugging = getattr(args, "debugging", None)
+inference = getattr(args, "inference", None)
+
+
+def t_get(key, default=None):
+    if training is not None and hasattr(training, key):
+        return getattr(training, key)
+    return getattr(args, key, default)
+
+
+def d_get(key, default=None):
+    if debugging is not None and hasattr(debugging, key):
+        return getattr(debugging, key)
+    return getattr(args, key, default)
+
+
+def i_get(key, default=None):
+    if inference is not None and hasattr(inference, key):
+        return getattr(inference, key)
+    return getattr(args, key, default)
+
 
 # Switch off the 'The used dataset had no length, returning gathered tensors. You should drop the remainder yourself.' warning if desired.
 # if args.silent:
 logging.getLogger("accelerate").setLevel(logging.WARNING)
 
 if args.outputpath is None:
-    if hasattr(args, "filepath") and args.filepath:
-        args.outputpath = Path(args.filepath).stem
+    # Prefer the data_source filepath when present
+    if args.data_source and getattr(args.data_source, "filepath", None):
+        args.outputpath = Path(args.data_source.filepath).stem
     else:
         args.outputpath = "output"
 
@@ -46,12 +72,12 @@ else:
 # - different tokenizer when pre-training
 # - different pre-trained-model/tokenizer when fine-tuning
 # - tokenizer/fine-tuned model path for inference
-if args.pretrainedmodel:
+if args.inference and args.inference.pretrainedmodel:
     if args.mode != "pre-train":
-        MODELLOADPATH = Path(args.pretrainedmodel)
+        MODELLOADPATH = Path(args.inference.pretrainedmodel)
         TOKENIZERFILE = MODELLOADPATH / "tokenizer.json"
     else:
-        TOKENIZERFILE = Path(args.pretrainedmodel) / "tokenizer.json"
+        TOKENIZERFILE = Path(args.inference.pretrainedmodel) / "tokenizer.json"
 
 # if not args.mode in ["predict", "interpret"]:
 #     MODELSAVEPATH = OUTPUTPATH / args.mode
@@ -79,7 +105,7 @@ else:
 now = datetime.now().strftime("%Y-%m-%d_%H:%M")
 LOGFILE = LOGPATH / f"{now}.log"
 LOGFILE.touch(exist_ok=True)
-if not args.dev:
+if not d_get("dev", False):
     handlers = [
         logging.FileHandler(LOGFILE, mode="w"),
         logging.StreamHandler(),
@@ -103,10 +129,14 @@ logging.basicConfig(
 
 # We scale the gradient with respect to the number of GPUs to keep an
 # effective batch size of `args.batchsize` x `args.gradacc`
-if args.dev:
+if d_get("dev", False):
     GRADACC = 1
 else:
-    GRADACC = args.gradacc / args.ngpus
+    detected_gpus = get_detected_ngpus(args)
+    # training.gradacc is the configured gradient-accumulation multiplier
+    GRADACC = float(t_get("gradacc", getattr(args, "gradacc", 1))) / max(
+        1, int(detected_gpus)
+    )
     logging.info(f"Set gradient accumulation to {GRADACC}.")
 
 # Log the arguments.
@@ -115,14 +145,16 @@ for k, v in sorted(vars(args).items()):
     logging.info(f"{k:>25} : {str(v):<25}")
 
 
-if args.resume == True:
+if getattr(args, "training", None) and getattr(args.training, "resume", False) == True:
     CHECKPOINTPATH = max(MODELSAVEPATH.glob("checkpoint*"), key=os.path.getmtime)
     logging.info(f"Pretrained model to resume from: {CHECKPOINTPATH}")
 else:
     CHECKPOINTPATH = None
 
 REGRESSIONTRAINER_CLS = (
-    WeightedRegressionTrainer if args.weightedregression else RegressionTrainer
+    WeightedRegressionTrainer
+    if getattr(getattr(args, "training", None), "weightedregression", False)
+    else RegressionTrainer
 )
 
 CLASSIFICATIONTRAINER_CLS = WeightedSamplingTrainer
@@ -131,6 +163,6 @@ MLMTRAINER_CLS = Trainer
 
 METRIC = (
     compute_metrics_for_classification
-    if args.task == "classification"
+    if getattr(args, "task", None) == "classification"
     else compute_metrics_for_regression
 )

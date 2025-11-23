@@ -17,7 +17,7 @@ data_source:
   devsplits: null
   testsplits: null
 training:
-  learningrate: 0.0001
+  learning_rate: 0.0001
   seed: 42
   batchsize: 8
   gradacc: 4
@@ -27,3 +27,10 @@ training:
   resume: false
   scaling: log
   weightedregression: false
+settings:
+  mlflow:
+    enabled: false
+    tracking_uri: null
+    experiment_name: null
+    log_artifacts: true
+    run_name_template: null

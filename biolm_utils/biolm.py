@@ -10,7 +10,7 @@ from transformers.trainer_callback import TrainerState
 from transformers.training_args import TrainingArguments
 
 from biolm_utils.config import get_config
-from biolm_utils.cross_validation import parametrized_decorator
+from biolm_utils.cross_validation import CrossValidator
 from biolm_utils.entry import (
     CHECKPOINTPATH,
     CLASSIFICATIONTRAINER_CLS,
@@ -24,6 +24,9 @@ from biolm_utils.entry import (
     args,
 )
 from biolm_utils.interpret import loo_scores
+from biolm_utils.params import get_detected_ngpus
+from biolm_utils.paths import Paths
+from biolm_utils.runner import make_run_fn
 from biolm_utils.train_tokenizer import tokenize
 from biolm_utils.train_utils import (
     create_reports,
@@ -86,37 +89,41 @@ def _get_num_labels(mode, task, dataset):
 
 def _build_training_args(model_save_path, val_dataset, config):
     """Builds the TrainingArguments for the main training loop."""
-    eval_batch_size = args.batchsize
-    if val_dataset and args.batchsize > len(val_dataset):
+    eval_batch_size = args.training.batchsize
+    if val_dataset and args.training.batchsize > len(val_dataset):
         eval_batch_size = len(val_dataset)
 
     is_pre_train = args.mode == "pre-train"
-    load_best = not args.dev and not is_pre_train
-    save_strategy = "epoch" if not args.dev else "no"
+    load_best = not args.debugging.dev and not is_pre_train
+    save_strategy = "epoch" if not args.debugging.dev else "no"
     eval_strategy = "epoch" if args.mode != "pre-train" else "no"
 
-    num_epochs = int(args.resume) if not isinstance(args.resume, bool) else args.nepochs
+    num_epochs = (
+        int(args.training.resume)
+        if not isinstance(args.training.resume, bool)
+        else args.training.nepochs
+    )
 
     return TrainingArguments(
         output_dir=str(model_save_path),
         overwrite_output_dir=True,
         num_train_epochs=num_epochs,
-        per_device_train_batch_size=args.batchsize,
+        per_device_train_batch_size=args.training.batchsize,
         per_device_eval_batch_size=eval_batch_size,
         gradient_accumulation_steps=GRADACC,
-        save_total_limit=1 if not args.dev else 0,
+        save_total_limit=1 if not args.debugging.dev else 0,
         load_best_model_at_end=load_best,
         evaluation_strategy=eval_strategy,
         save_strategy=save_strategy,
         logging_strategy="steps" if is_pre_train else "epoch",
         disable_tqdm=True,
-        log_level="critical" if args.silent else "info",
+        log_level="critical" if args.debugging.silent else "info",
         logging_dir=str(TBPATH),
         warmup_ratio=0.05 if is_pre_train else 0.0,
         remove_unused_columns=False,
         dataloader_drop_last=True,
         label_names=["labels"],
-        learning_rate=config.LEARNINGRATE,
+        learning_rate=config.learning_rate,
         max_grad_norm=config.MAX_GRAD_NORM,
         weight_decay=config.WEIGHT_DECAY,
         save_safetensors=False,
@@ -126,24 +133,24 @@ def _build_training_args(model_save_path, val_dataset, config):
 
 def _build_test_args(model_load_path, test_dataset):
     """Builds the TrainingArguments for testing/prediction."""
-    ngpus = getattr(args, "ngpus", 1)
-    if ngpus > 1:
+    detected_gpus = get_detected_ngpus(args)
+    if detected_gpus > 1:
         logging.warning(
             "Running inference on %d GPUs. This may drop samples if "
             "the dataset size is not divisible by the batch size. "
             "Consider using a single GPU for complete evaluation.",
-            ngpus,
+            detected_gpus,
         )
 
-    test_batch_size = min(args.batchsize, len(test_dataset))
+    test_batch_size = min(args.training.batchsize, len(test_dataset))
 
     return TrainingArguments(
         output_dir=str(model_load_path),
         do_train=False,
         do_predict=True,
         per_device_eval_batch_size=test_batch_size,
-        dataloader_drop_last=args.ngpus > 1,
-        log_level="critical" if args.silent else "info",
+        dataloader_drop_last=detected_gpus > 1,
+        log_level="critical" if args.debugging.silent else "info",
         disable_tqdm=True,
         remove_unused_columns=False,
         label_names=["labels"],
@@ -206,11 +213,11 @@ def train(
     )
 
     num_epochs_trained = 0
-    if args.resume is True:
+    if args.training and args.training.resume is True:
         logging.info(f"Resuming training from checkpoint: {CHECKPOINTPATH}")
         train_result = trainer.train(resume_from_checkpoint=str(CHECKPOINTPATH))
     else:
-        if not isinstance(args.resume, bool):
+        if not isinstance(args.training.resume, bool):
             trainer._load_from_checkpoint(model_save_path)
             state_path = model_save_path / "trainer_state.json"
             trainer.state = TrainerState.load_from_json(state_path)
@@ -341,91 +348,38 @@ def main():
         args, tokenizer, config.ADD_SPECIAL_TOKENS, DATASETFILE, config.DATASET_CLS
     )
 
-    # By defining `run` inside `main`, the decorator can safely access `full_dataset`.
-    @parametrized_decorator(args, full_dataset)
-    def run(
-        train_dataset,
-        val_dataset,
-        test_dataset,
-        model_load_path,
-        model_save_path,
-        report_file,
-        rank_file,
-    ):
-        """Main execution logic, called for each cross-validation fold."""
+    # Build a run-once function and hand orchestration to the CrossValidator
+    # NOTE: we intentionally keep the per-fold function signature identical to
+    # the previous nested `run` function so the CrossValidator may invoke it
+    # without further changes.
+    from biolm_utils.entry import (
+        MODELLOADPATH,
+        MODELSAVEPATH,
+        OUTPUTPATH,
+        RANKFILE,
+        REPORTFILE,
+    )
 
-        model_cls_map = {
-            "pre-train": config.MODEL_CLS_FOR_PRETRAINING,
-            "fine-tune": config.MODEL_CLS_FOR_FINETUNING,
-            "predict": config.MODEL_CLS_FOR_FINETUNING,
-            "interpret": config.MODEL_CLS_FOR_FINETUNING,
-        }
-        model_cls = model_cls_map.get(args.mode)
-        if model_cls is None:
-            raise ValueError(f"Unknown mode: '{args.mode}'.")
+    run_once = make_run_fn(
+        args=args,
+        config=config,
+        tokenizer=tokenizer,
+        tokenizer_for_trainer=tokenizer_for_trainer,
+        full_dataset=full_dataset,
+    )
 
-        if args.mode == "pre-train":
-            data_collator = config.DATACOLLATOR_CLS_FOR_PRETRAINING(tokenizer=tokenizer)
-        else:  # fine-tune, predict, interpret
-            data_collator = DefaultDataCollator()
+    base_paths = Paths(
+        model_load_path=MODELLOADPATH,
+        model_save_path=MODELSAVEPATH,
+        output_path=OUTPUTPATH,
+        report_file=REPORTFILE,
+        rank_file=RANKFILE,
+    )
 
-        if args.mode in ["pre-train", "fine-tune"]:
-            results, model = train(
-                train_dataset=train_dataset,
-                val_dataset=val_dataset,
-                data_collator=data_collator,
-                model_load_path=model_load_path,
-                model_save_path=model_save_path,
-                tokenizer=tokenizer,
-                tokenizer_for_trainer=tokenizer_for_trainer,
-                full_dataset=full_dataset,
-                model_cls=model_cls,
-                config=config,
-            )
-            if args.mode == "fine-tune" and test_dataset:
-                results = test(
-                    model=model,
-                    test_dataset=test_dataset,
-                    data_collator=data_collator,
-                    model_load_path=model_save_path,
-                    report_file=report_file,
-                    rank_file=rank_file,
-                    tokenizer=tokenizer,
-                    tokenizer_for_trainer=tokenizer_for_trainer,
-                    full_dataset=full_dataset,
-                    model_cls=model_cls,
-                    config=config,
-                )
-            return results
-
-        elif args.mode == "predict":
-            return test(
-                test_dataset=test_dataset,
-                data_collator=data_collator,
-                model_load_path=model_load_path,
-                report_file=report_file,
-                rank_file=rank_file,
-                tokenizer=tokenizer,
-                tokenizer_for_trainer=tokenizer_for_trainer,
-                full_dataset=full_dataset,
-                model_cls=model_cls,
-                config=config,
-            )
-
-        elif args.mode == "interpret":
-            return loo_scores(
-                args=args,
-                tokenizer=tokenizer,
-                model_cls=model_cls,
-                test_dataset=test_dataset,
-                model_load_path=model_load_path,
-                output_path=model_save_path,
-                remove_first_last=config.ADD_SPECIAL_TOKENS,
-            )
-
-    # This call triggers the `parametrized_decorator`, which handles
-    # cross-validation and calls the `run` function for each fold.
-    run()
+    cv = CrossValidator(
+        params=args, dataset=full_dataset, run_once_fn=run_once, base_paths=base_paths
+    )
+    return cv.execute()
 
 
 if __name__ == "__main__":

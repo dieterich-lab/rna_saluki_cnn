@@ -30,10 +30,14 @@ tokenization:
   samplesize: null
   encoding: atomic
   lefttailing: false
+  vocabsize: 20000
+  minfreq: 2
+  maxtokenlength: 10
+  atomicreplacements: null
 
 # Training settings
 training:
-  learningrate: 0.0001
+  learning_rate: 0.0001
   seed: 42
   batchsize: 8
   gradacc: 4
@@ -53,7 +57,24 @@ inference:
     replacespecifier: false
 
 # Settings (for advanced configurations)
-settings: null
+
+# Data pre-processing options (kept under settings for plugin-level controls)
+settings:
+  data_pre_processing:
+    centertoken: false
+    only512: false
+    _3utr: false
+    non3utr: false
+    nomarkers: false
+    weightpos: null
+  # Optional MLflow integration (disabled by default). Enable and set tracking_uri
+  # / experiment_name for per-run logging.
+  mlflow:
+    enabled: false
+    tracking_uri: null
+    experiment_name: null
+    log_artifacts: true
+    run_name_template: null
 
 # Debugging settings
 debugging:
@@ -62,4 +83,3 @@ debugging:
   getdata: false
   forcenewdata: false
   accelerator: gpu
-  ngpus: 1

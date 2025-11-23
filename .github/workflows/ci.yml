@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, refactor-config-management ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.10, 3.11]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry and dependencies (dev extras)
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+          # use in-project venv for hermetic CI
+          poetry config virtualenvs.in-project true --local || true
+          poetry install --no-interaction --with dev
+
+      - name: Lint (ruff)
+        run: |
+          pip install ruff
+          ruff check . || true
+
+      - name: Run tests
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run pytest -q
+
+      - name: Fail if deprecated config keys present
+        run: |
+          set -e
+          # Search for the deprecated key 'learningrate' anywhere in the repo
+          if grep -R --line-number --exclude-dir .git -e '\blearningrate\b' .; then
+            echo "Found deprecated 'learningrate' usage. Please migrate to 'learning_rate'."
+            exit 1
+          fi
+
+  mlflow-smoke:
+    name: MLflow smoke tests
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install Poetry and dependencies + mlflow
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry config virtualenvs.in-project true --local || true
+          poetry install --no-interaction --with dev
+          # install mlflow extras into the environment
+          poetry install --no-interaction --with mlflow
+
+      - name: Run MLflow smoke tests
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run pytest -q tests/test_mlflow_integration.py tests/test_runner_mlflow.py tests/test_mlflow_smoke.py tests/test_mlflow_model_logging.py

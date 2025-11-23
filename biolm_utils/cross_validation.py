@@ -1,378 +1,459 @@
+"""Cross-validation and orchestration helpers.
+
+This module provides the CrossValidator class: an explicit, testable,
+easy-to-read replacement for the older decorator-based `parametrized_decorator`.
+
+For backward compatibility we still provide `parametrized_decorator` as a thin
+wrapper that instantiates CrossValidator and runs it.
+"""
+
+from __future__ import annotations
+
 import logging
-from collections import Counter, defaultdict
-from contextlib import contextmanager
+from typing import Any, Callable, List, Optional
 
 import numpy as np
-from torch.utils.data import Subset
 
-from biolm_utils.entry import (
-    MODELLOADPATH,
-    MODELSAVEPATH,
-    OUTPUTPATH,
-    RANKFILE,
-    REPORTFILE,
+from biolm_utils.dataset_utils import (
+    check_batchsize,
+    log_classification_counts,
+    make_subsets,
+    split_indices,
 )
+from biolm_utils.paths import Paths
 
 logger = logging.getLogger(__name__)
 
 
-def make_datasets(
-    dataset,
-    train_idx,
-    val_idx,
-    test_idx,
-    dev,
-):
-    """
-    Create train, validation, and test Subset datasets from indices.
-    """
-    if not dev:
-        train_dataset = Subset(dataset, train_idx)
-        val_dataset = Subset(dataset, val_idx)
-        test_dataset = Subset(dataset, test_idx) if test_idx is not None else None
-    else:
-        idx = np.arange(len(dataset))
-        train_dataset = val_dataset = Subset(dataset, idx.tolist())
-        test_dataset = Subset(dataset, idx.tolist()) if test_idx is not None else None
-    return train_dataset, val_dataset, test_dataset
+class CrossValidator:
+    """Orchestrates runs over train/val/test splits and modes.
 
+    Usage:
+        cv = CrossValidator(params, dataset, run_once_fn, base_paths)
+        results = cv.execute()
 
-def check_batchsize(ds, batchsize, name):
+    run_once_fn must accept signature:
+      (train_dataset, val_dataset, test_dataset, model_load_path, model_save_path, report_file, rank_file)
+
+    The class intentionally does not mutate module globals; instead it passes
+    Paths objects to the underlying run function.
     """
-    Raise an exception if the dataset is smaller than the batch size.
-    """
-    if ds is not None and len(ds) < batchsize:
-        raise Exception(
-            f"Size of the {name} dataset ({len(ds)}) is smaller than the batch size, please lower the batch size first."
+
+    def __init__(
+        self,
+        params: Any,
+        dataset: Any,
+        run_once_fn: Callable,
+        base_paths: Paths,
+    ):
+        self.params = params
+        self.dataset = dataset
+        self.run_once_fn = run_once_fn
+        self.base_paths = base_paths
+        # Validate params for consistent cross-validation behavior early so
+        # we surface clear errors instead of obscure failures downstream.
+        self._validate_params()
+
+    def execute(self):
+        m = self.params.mode
+
+        # Tokenize handled earlier by biolm.py (short-circuit), but keep guard
+        if m == "tokenize":
+            return self.run_once_fn(None, None, None, None, None, None, None)
+
+        if m == "pre-train":
+            return self._run_pretrain()
+
+        if m == "fine-tune":
+            ds = getattr(self.params, "data_source", None)
+            cv = (
+                getattr(ds, "crossvalidation", None)
+                if ds is not None
+                else getattr(self.params, "crossvalidation", None)
+            )
+            if cv:
+                # predefined splits use splitpos; otherwise random crossval
+                splitpos = (
+                    getattr(ds, "splitpos", None)
+                    if ds is not None
+                    else getattr(self.params, "splitpos", None)
+                )
+                if splitpos:
+                    return self._run_predefined_splits()
+                else:
+                    return self._run_random_crossval()
+            else:
+                # no cross-validation
+                ds = getattr(self.params, "data_source", None)
+                splitpos = (
+                    getattr(ds, "splitpos", None)
+                    if ds is not None
+                    else getattr(self.params, "splitpos", None)
+                )
+                devsplits = (
+                    getattr(ds, "devsplits", None)
+                    if ds is not None
+                    else getattr(self.params, "devsplits", None)
+                )
+                if splitpos and devsplits:
+                    return self._run_predefined_no_cv()
+                elif (
+                    getattr(ds, "splitratio", None)
+                    if ds is not None
+                    else getattr(self.params, "splitratio", None)
+                ):
+                    return self._run_single_random_split()
+                else:
+                    # fallback to a single full-dataset training
+                    return self._run_pretrain()
+
+        if m in ("predict", "interpret"):
+            return self._run_predict()
+
+        raise ValueError(f"Unsupported mode: {m}")
+
+    def _validate_params(self) -> None:
+        """Validate crossvalidation-related parameter combinations and raise
+        helpful errors for invalid or ambiguous configurations.
+
+        Rules enforced:
+        - For fine-tune mode:
+          * crossvalidation == True requires `splitpos` and `devsplits` (predefined
+            splits driven from the dataset file).
+          * crossvalidation as integer must be >=2 (k-fold random CV) and requires
+            `splitratio` (to generate train/val/test indices).
+          * crossvalidation as integer conflicts with `splitpos`: pick either
+            predefined splits (bool True) or numeric random CV (int >=2).
+        - Without crossvalidation: if `splitpos` is provided, `devsplits` must be
+          set (to define validation splits) — otherwise training configuration is
+          ambiguous.
+        """
+        if getattr(self.params, "mode", None) != "fine-tune":
+            return
+
+        # Prefer nested data_source values when available
+        ds = getattr(self.params, "data_source", None)
+        cv = (
+            getattr(ds, "crossvalidation", None)
+            if ds is not None
+            else getattr(self.params, "crossvalidation", None)
+        )
+        splitpos = (
+            getattr(ds, "splitpos", None)
+            if ds is not None
+            else getattr(self.params, "splitpos", None)
+        )
+        splitratio = (
+            getattr(ds, "splitratio", None)
+            if ds is not None
+            else getattr(self.params, "splitratio", None)
+        )
+        devsplits = (
+            getattr(ds, "devsplits", None)
+            if ds is not None
+            else getattr(self.params, "devsplits", None)
+        )
+
+        # Normalized checks
+        if cv:
+            # Boolean True -> predefined splits required
+            if isinstance(cv, bool) and cv is True:
+                if not splitpos:
+                    raise ValueError(
+                        "crossvalidation=True requires 'splitpos' to be set so predefined splits can be used. "
+                        "If you want random k-fold CV, set crossvalidation to an integer >= 2 and set 'splitratio'."
+                    )
+                if not devsplits:
+                    raise ValueError(
+                        "crossvalidation=True with 'splitpos' requires 'devsplits' to be defined in your config (testsplits is optional)."
+                    )
+
+            # Numeric CV -> require integer >= 2 and splitratio, and forbid splitpos
+            elif isinstance(cv, int):
+                if cv < 2:
+                    raise ValueError(
+                        "Numeric crossvalidation must be >= 2 for k-fold cross-validation."
+                    )
+                if splitpos is not None:
+                    raise ValueError(
+                        "Numeric crossvalidation (k-fold) conflicts with 'splitpos'. "
+                        "Use boolean crossvalidation=True together with 'splitpos' to run CV on predefined splits, or omit splitpos for random k-fold CV."
+                    )
+                if not splitratio:
+                    raise ValueError(
+                        "Numeric crossvalidation requires 'splitratio' to be provided (e.g. [80,10,10])."
+                    )
+            else:
+                # Other truthy values are not supported (e.g. strings) -> error early
+                raise ValueError(
+                    "'crossvalidation' must be either boolean or an integer >= 2 when truthy."
+                )
+
+        else:
+            # No CV requested. If splitpos is present, caller must provide devsplits.
+            if splitpos and not devsplits:
+                raise ValueError(
+                    "'splitpos' is set but 'devsplits' is missing. Provide 'devsplits' (and optionally 'testsplits') when using 'splitpos' to define deterministic splits."
+                )
+
+    # Implementation details mirror the previous behavior but are easier to test.
+    def _run_pretrain(self):
+        idx = np.arange(len(self.dataset))
+        np.random.shuffle(idx)
+        dev_flag = getattr(getattr(self.params, "debugging", None), "dev", False)
+        train_dataset = make_subsets(
+            self.dataset, idx.tolist(), idx.tolist(), None, dev_flag
+        )[0]
+        val_dataset = None if not dev_flag else train_dataset
+        test_dataset = None if not dev_flag else train_dataset
+        p = self.base_paths
+        return self.run_once_fn(
+            train_dataset,
+            val_dataset,
+            test_dataset,
+            p.model_load_path,
+            p.model_save_path,
+            p.report_file,
+            p.rank_file,
+        )
+
+    def _run_random_crossval(self):
+        results = []
+        idx = np.arange(len(self.dataset))
+        # cv is expected to be integer here (validated earlier) — prefer nested
+        # data_source.crossvalidation
+        ds = getattr(self.params, "data_source", None)
+        cv = (
+            getattr(ds, "crossvalidation", None)
+            if ds is not None
+            else getattr(self.params, "crossvalidation", None)
+        )
+        for x in range(int(cv)):
+            np.random.shuffle(idx)
+            splitratio = (
+                getattr(ds, "splitratio", None)
+                if ds is not None
+                else getattr(self.params, "splitratio", None)
+            )
+            train_idx, val_idx, test_idx = split_indices(idx, splitratio)
+            dev_flag = getattr(self.params, "debugging", None)
+            dev_flag = (
+                getattr(dev_flag, "dev", False) if dev_flag is not None else False
+            )
+            train_ds, val_ds, test_ds = make_subsets(
+                self.dataset, train_idx, val_idx, test_idx, dev_flag
+            )
+            batchsize = getattr(
+                getattr(self.params, "training", None),
+                "batchsize",
+                getattr(self.params, "batchsize", None),
+            )
+            check_batchsize(train_ds, batchsize, "train")
+            check_batchsize(val_ds, batchsize, "validation")
+            if test_ds is not None:
+                check_batchsize(test_ds, batchsize, "test")
+            split_paths = self.base_paths.with_split(x, self.params)
+            res = self.run_once_fn(
+                train_ds,
+                val_ds,
+                test_ds,
+                split_paths.model_load_path,
+                split_paths.model_save_path,
+                split_paths.report_file,
+                split_paths.rank_file,
+            )
+            results.append(res)
+        if self.params.mode != "interpret":
+            res_type = "validation" if not test_ds else "test"
+            logger.info(
+                f"Mean {res_type} results from {len(results)} splits: {np.mean(results)}, Std: {np.std(results)}"
+            )
+        return results
+
+    def _run_predefined_splits(self):
+        # construct a map split -> list indices
+        split_dict = {}
+        col = getattr(getattr(self.params, "data_source", None), "columnsep", ",")
+        pos = getattr(getattr(self.params, "data_source", None), "splitpos", None)
+        for i, line in enumerate(self.dataset.lines):
+            split = int(line.split(col)[pos - 1].strip('"'))
+            split_dict.setdefault(split, []).append(i)
+
+        if getattr(self.params, "data_source", None) and getattr(
+            self.params.data_source, "testsplits", None
+        ):
+            splits = list(
+                zip(
+                    self.params.data_source.devsplits,
+                    self.params.data_source.testsplits,
+                )
+            )
+        else:
+            splits = self.params.data_source.devsplits
+
+        results = []
+        for k, split in enumerate(splits):
+            if getattr(getattr(self.params, "data_source", None), "testsplits", None):
+                dev_splits, test_splits = split
+            else:
+                dev_splits = split
+                test_splits = None
+            logger.info(f"----- SPLIT {k} -----")
+            # build indices
+            val_idx = [i for s in dev_splits for i in split_dict[s]]
+            if test_splits is not None:
+                test_idx = [i for s in test_splits for i in split_dict[s]]
+                train_splits = (
+                    set(split_dict.keys()) - set(dev_splits) - set(test_splits)
+                )
+            else:
+                test_idx = None
+                train_splits = set(split_dict.keys()) - set(dev_splits)
+            train_idx = [i for s in train_splits for i in split_dict[s]]
+            dev_flag = getattr(getattr(self.params, "debugging", None), "dev", False)
+            train_ds, val_ds, test_ds = make_subsets(
+                self.dataset, train_idx, val_idx, test_idx, dev_flag
+            )
+            split_paths = self.base_paths.with_split(k, self.params)
+            res = self.run_once_fn(
+                train_ds,
+                val_ds,
+                test_ds,
+                split_paths.model_load_path,
+                split_paths.model_save_path,
+                split_paths.report_file,
+                split_paths.rank_file,
+            )
+            results.append(res)
+        if self.params.mode != "interpret":
+            res_type = "validation" if not test_ds else "test"
+            logger.info(
+                f"Mean {res_type} results from {len(results)} splits: {np.mean(results)}, Std: {np.std(results)}"
+            )
+        return results
+
+    def _run_predefined_no_cv(self):
+        # deterministic splitpos + devsplits + optional testsplits
+        split_dict = {}
+        for i, line in enumerate(self.dataset.lines):
+            split = int(line.split(col)[pos - 1].strip('"'))
+            split_dict.setdefault(split, []).append(i)
+
+        train_splits = set(split_dict.keys()) - set(self.params.data_source.devsplits)
+        if getattr(self.params.data_source, "testsplits", None):
+            train_splits -= set(self.params.data_source.testsplits)
+        train_idx = [i for s in train_splits for i in split_dict[s]]
+        val_idx = [i for s in self.params.data_source.devsplits for i in split_dict[s]]
+        test_idx = (
+            [i for s in self.params.data_source.testsplits for i in split_dict[s]]
+            if getattr(self.params.data_source, "testsplits", None)
+            else None
+        )
+        train_ds, val_ds, test_ds = make_subsets(
+            self.dataset, train_idx, val_idx, test_idx, self.params.dev
+        )
+        p = self.base_paths
+        return self.run_once_fn(
+            train_ds,
+            val_ds,
+            test_ds,
+            p.model_load_path,
+            p.model_save_path,
+            p.report_file,
+            p.rank_file,
+        )
+
+    def _run_single_random_split(self):
+        idx = np.arange(len(self.dataset))
+        np.random.shuffle(idx)
+        splitratio = self.params.splitratio if self.params.splitratio else [80, 20]
+        train_idx, val_idx, test_idx = split_indices(idx, splitratio)
+        train_ds, val_ds, test_ds = make_subsets(
+            self.dataset, train_idx, val_idx, test_idx, self.params.dev
+        )
+        check_batchsize(train_ds, self.params.batchsize, "train")
+        check_batchsize(val_ds, self.params.batchsize, "validation")
+        if test_ds is not None:
+            check_batchsize(test_ds, self.params.batchsize, "test")
+        p = self.base_paths
+        return self.run_once_fn(
+            train_ds,
+            val_ds,
+            test_ds,
+            p.model_load_path,
+            p.model_save_path,
+            p.report_file,
+            p.rank_file,
+        )
+
+    def _run_predict(self):
+        ds = getattr(self.params, "data_source", None)
+        inferenceonsplits = (
+            getattr(ds, "inferenceonsplits", None)
+            if ds is not None
+            else getattr(self.params, "inferenceonsplits", None)
+        )
+        if not inferenceonsplits:
+            idx = np.arange(len(self.dataset))
+        else:
+            idx = [
+                i
+                for i, line in enumerate(self.dataset.lines)
+                if int(
+                    line.split(getattr(ds, "columnsep", ","))[
+                        getattr(ds, "splitpos", 1) - 1
+                    ].strip('"')
+                )
+                in inferenceonsplits
+            ]
+        dev_flag = getattr(getattr(self.params, "debugging", None), "dev", False)
+        test_dataset = make_subsets(self.dataset, idx, idx, None, dev_flag)[0]
+        p = self.base_paths
+        return self.run_once_fn(
+            None,
+            None,
+            test_dataset,
+            p.model_load_path,
+            p.model_save_path,
+            p.report_file,
+            p.rank_file,
         )
 
 
-def log_classification_counts(
-    params,
-    dataset,
-    train_dataset,
-    val_dataset,
-    test_dataset,
-):
-    """
-    Log class distribution for classification tasks.
-    """
-    if getattr(params, "task", None) == "classification":
-        for name, ds in [
-            ("train", train_dataset),
-            ("val", val_dataset),
-            ("test", test_dataset),
-        ]:
-            if ds is not None:
-                counter = Counter(
-                    [dataset.LE.classes_[dataset[x]["labels"]] for x in ds.indices]
-                )
-                logger.info(f"{name} label distribution: {counter}")
-
-
-def run_and_log(
-    func,
-    params,
-    dataset,
-    train_dataset,
-    val_dataset,
-    test_dataset,
-):
-    """
-    Log dataset info and run the main function.
-    """
-    log_classification_counts(params, dataset, train_dataset, val_dataset, test_dataset)
-    logger.info(
-        f"Len train dataset: {len(train_dataset)}, len val dataset: {len(val_dataset)}"
-    )
-    res = func(
-        train_dataset,
-        val_dataset,
-        test_dataset,
-        MODELLOADPATH,
-        MODELSAVEPATH,
-        REPORTFILE,
-        RANKFILE,
-    )
-    return res
-
-
-def split_indices(idx, splitratio):
-    """
-    Split indices into train/val/(test) according to splitratio.
-    """
-    if len(splitratio) < 3:
-        train_idx = idx[: int(len(idx) * splitratio[0] / 100)]
-        val_idx = idx[-int(len(idx) * splitratio[1] / 100) :]
-        test_idx = None
-    else:
-        train_end = int(len(idx) * splitratio[0] / 100)
-        val_end = train_end + int(len(idx) * splitratio[1] / 100)
-        train_idx = idx[:train_end]
-        val_idx = idx[train_end:val_end]
-        test_idx = idx[val_end:]
-    return train_idx, val_idx, test_idx
-
-
-@contextmanager
-def split_path_context(split_id, params):
-    """
-    Context manager to handle path changes for each split.
-    """
-    global MODELSAVEPATH, OUTPUTPATH, REPORTFILE, RANKFILE, MODELLOADPATH
-    orig_paths = (
-        MODELSAVEPATH,
-        OUTPUTPATH,
-        REPORTFILE,
-        RANKFILE,
-        MODELLOADPATH,
-    )
-    MODELSAVEPATH = MODELSAVEPATH / f"{split_id}"
-    OUTPUTPATH = OUTPUTPATH / f"{split_id}"
-    REPORTFILE = REPORTFILE.parent / f"{split_id}" / REPORTFILE.name
-    if params.mode == "fine-tune":
-        RANKFILE = RANKFILE.parent / f"{split_id}" / RANKFILE.name
-    if params.mode == "interpret":
-        MODELLOADPATH = MODELLOADPATH / f"{split_id}"
-    try:
-        yield
-    finally:
-        (
-            MODELSAVEPATH,
-            OUTPUTPATH,
-            REPORTFILE,
-            RANKFILE,
-            MODELLOADPATH,
-        ) = orig_paths
-
-
 def parametrized_decorator(params, dataset):
+    """Backward-compatible wrapper: returns a decorator that instantiates
+    CrossValidator and uses it to call the provided function.
     """
-    Decorator to wrap the main run function and handle all cross-validation, splitting, and dataset logic.
-    """
 
-    def cv_wrapper(func):
-        # --- Tokenization mode ---
-        if params.mode == "tokenize":
+    def decorator(func):
+        import warnings
 
-            def tokenize(*args, **kwargs):
-                return func(None, None, None, None, None)
+        warnings.warn(
+            "parametrized_decorator is deprecated — use CrossValidator + make_run_fn instead. "
+            "This wrapper will continue to work for now but will be removed in a future release.",
+            DeprecationWarning,
+        )
 
-            return tokenize
+        def wrapper(*args, **kwargs):
+            # Base paths are taken from biolm_utils.entry at import time by caller
+            # The caller can still expect the old signature: func(train, val, test, model_load, model_save, report, rank)
+            from biolm_utils.entry import (
+                MODELLOADPATH,
+                MODELSAVEPATH,
+                RANKFILE,
+                REPORTFILE,
+            )
 
-        # --- Cross-validation with splitpos ---
-        if params.mode == "fine-tune" and params.crossvalidation and params.splitpos:
-            split_dict = dict()
-            for i, line in enumerate(dataset.lines):
-                split = int(
-                    line.split(params.columnsep)[params.splitpos - 1].strip('"')
-                )
-                if split not in split_dict:
-                    split_dict[split] = [i]
-                else:
-                    split_dict[split].append(i)
+            base_paths = Paths(
+                model_load_path=MODELLOADPATH,
+                model_save_path=MODELSAVEPATH,
+                output_path=MODELSAVEPATH.parent,
+                report_file=REPORTFILE,
+                rank_file=RANKFILE,
+            )
+            cv = CrossValidator(params, dataset, func, base_paths)
+            return cv.execute()
 
-            if params.testsplits:
-                splits = list(zip(params.devsplits, params.testsplits))
-            else:
-                splits = params.devsplits
+        return wrapper
 
-            def cross_validate_on_predefined_splits(*args, **kwargs):
-                results = []
-                for k, (split) in enumerate(splits):
-                    # for k, (dev_splits, test_splits) in enumerate(splits):
-                    if params.testsplits:
-                        dev_splits, test_splits = split
-                    else:
-                        dev_splits = split
-                        test_splits = None
-                    logger.info(f"----- SPLIT {k} -----")
-                    with split_path_context(k, params):
-                        val_idx = [i for s in dev_splits for i in split_dict[s]]
-                        if test_splits is not None:
-                            test_idx = [i for s in test_splits for i in split_dict[s]]
-                            train_splits = (
-                                set(split_dict.keys())
-                                - set(dev_splits)
-                                - set(test_splits)
-                            )
-                        else:
-                            test_idx = None
-                            train_splits = set(split_dict.keys()) - set(dev_splits)
-                        train_idx = [i for s in train_splits for i in split_dict[s]]
-
-                        train_dataset, val_dataset, test_dataset = make_datasets(
-                            dataset, train_idx, val_idx, test_idx, params.dev
-                        )
-                        res = run_and_log(
-                            func,
-                            params,
-                            dataset,
-                            train_dataset,
-                            val_dataset,
-                            test_dataset,
-                            *args,
-                        )
-                        results.append(res)
-                if params.mode != "interpret":
-                    res_type = "validation" if not test_dataset else "test"
-                    logger.info(
-                        f"Mean {res_type} results from {len(results)} splits: {np.mean(results)}, Std: {np.std(results)}"
-                    )
-                    return results
-
-            return cross_validate_on_predefined_splits
-
-        # --- Cross-validation with splitratio ---
-        if (
-            params.mode == "fine-tune"
-            and params.crossvalidation
-            and (params.splitratio or int(params.crossvalidation) > 1)
-        ):
-
-            def cross_validate_on_random_splits(*args, **kwargs):
-                results = []
-                idx = np.arange(len(dataset))
-                for x in range(params.crossvalidation):
-                    np.random.shuffle(idx)
-                    with split_path_context(x, params):
-                        train_idx, val_idx, test_idx = split_indices(
-                            idx, params.splitratio
-                        )
-                        train_dataset, val_dataset, test_dataset = make_datasets(
-                            dataset, train_idx, val_idx, test_idx, params.dev
-                        )
-                        check_batchsize(train_dataset, params.batchsize, "train")
-                        check_batchsize(val_dataset, params.batchsize, "validation")
-                        if test_dataset is not None:
-                            check_batchsize(test_dataset, params.batchsize, "test")
-                        res = run_and_log(
-                            func,
-                            params,
-                            dataset,
-                            train_dataset,
-                            val_dataset,
-                            test_dataset,
-                            *args,
-                        )
-                        results.append(res)
-                if params.mode != "interpret":
-                    res_type = "validation" if not test_dataset else "test"
-                    logger.info(
-                        f"Mean {res_type} results from {len(results)} splits: {np.mean(results)}, Std: {np.std(results)}"
-                    )
-                    return results
-
-            return cross_validate_on_random_splits
-
-        if params.mode == "fine-tune" and not params.crossvalidation:
-            # --- Dedicated splits (no cross-validation, but splitpos/devsplits/testsplits) ---
-            if params.splitpos and params.devsplits:
-
-                def run_finetuning_on_predefined_splits(*args, **kwargs):
-                    split_dict = defaultdict(list)
-                    for i, line in enumerate(dataset.lines):
-                        split = int(
-                            line.split(params.columnsep)[params.splitpos - 1].strip('"')
-                        )
-                        split_dict[split].append(i)
-                    train_splits = set(set(split_dict.keys())) - set(params.devsplits)
-                    if params.testsplits:
-                        train_splits -= set(params.testsplits)
-                    train_idx = [i for s in train_splits for i in split_dict[s]]
-                    val_idx = [i for s in params.devsplits for i in split_dict[s]]
-                    if params.testsplits:
-                        test_idx = [i for s in params.testsplits for i in split_dict[s]]
-                    else:
-                        test_idx = None
-                    train_dataset, val_dataset, test_dataset = make_datasets(
-                        dataset, train_idx, val_idx, test_idx, params.dev
-                    )
-                    return run_and_log(
-                        func,
-                        params,
-                        dataset,
-                        train_dataset,
-                        val_dataset,
-                        test_dataset,
-                        *args,
-                    )
-
-                return run_finetuning_on_predefined_splits
-
-            # --- Random splits (no cross-validation) ---
-            elif params.splitratio:
-
-                def run_finetuning_on_random_splits(*args, **kwargs):
-                    idx = np.arange(len(dataset))
-                    np.random.shuffle(idx)
-                    splitratio = params.splitratio if params.splitratio else [80, 20]
-                    train_idx, val_idx, test_idx = split_indices(idx, splitratio)
-                    train_dataset, val_dataset, test_dataset = make_datasets(
-                        dataset, train_idx, val_idx, test_idx, params.dev
-                    )
-                    check_batchsize(train_dataset, params.batchsize, "train")
-                    check_batchsize(val_dataset, params.batchsize, "validation")
-                    if test_dataset is not None:
-                        check_batchsize(test_dataset, params.batchsize, "test")
-                    return run_and_log(
-                        func,
-                        params,
-                        dataset,
-                        train_dataset,
-                        val_dataset,
-                        test_dataset,
-                        *args,
-                    )
-
-                return run_finetuning_on_random_splits
-
-        # --- Pre-train mode ---
-        if params.mode == "pre-train":
-
-            def run_pretraining(*args, **kwargs):
-                idx = np.arange(len(dataset))
-                np.random.shuffle(idx)
-                train_dataset = Subset(dataset, idx)
-                val_dataset = test_dataset = (
-                    None if not params.dev else Subset(dataset, idx)
-                )
-                return func(
-                    train_dataset,
-                    val_dataset,
-                    test_dataset,
-                    MODELLOADPATH,
-                    MODELSAVEPATH,
-                )
-
-            return run_pretraining
-
-        # --- Predict/Interpret mode ---
-        if params.mode in ["predict", "interpret"]:
-
-            def run_prediction(*args, **kwargs):
-                if not getattr(params, "inferenceonsplits", None):
-                    idx = np.arange(len(dataset))
-                else:
-                    idx = [
-                        i
-                        for i, line in enumerate(dataset.lines)
-                        if int(
-                            line.split(params.columnsep)[params.splitpos - 1].strip('"')
-                        )
-                        in params.inferenceonsplits
-                    ]
-                test_dataset = Subset(dataset, idx)
-                return func(
-                    None,
-                    None,
-                    test_dataset,
-                    MODELLOADPATH,
-                    MODELSAVEPATH,
-                    REPORTFILE,
-                    RANKFILE,
-                )
-
-            return run_prediction
-
-    return cv_wrapper
+    return decorator

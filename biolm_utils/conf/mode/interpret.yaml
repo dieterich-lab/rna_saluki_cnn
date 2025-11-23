@@ -30,5 +30,4 @@ settings:
     batchsize: 8
     blocksize: 12288
     scaling: log
-debugging:
-  ngpus: 1
+debugging: {}
