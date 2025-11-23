@@ -1,5 +1,32 @@
 # bioml_utils — utilities for bioinformatic language models
 
+## Quick start — exact copy/paste (Poetry, local dev)
+
+These are the minimal commands a new developer can copy/paste to get a working local development environment for both the framework and the Saluki plugin. They assume you have two local checkouts: one for the framework (`biolm_utils`) and one for the plugin (`rna_saluki_cnn`).
+
+```bash
+# 1) Create the framework venv and install dependencies
+cd /path/to/biolm_utils
+poetry env use $(which python)  # optional: choose interpreter
+poetry install
+
+# 2) Create the plugin venv (Poetry) and install the framework + plugin into the same environment
+cd /path/to/rna_saluki_cnn
+# use --no-root so the plugin repo itself doesn't try to install as root package
+poetry install --no-root
+poetry run python -m pip install -e /path/to/biolm_utils
+poetry run python -m pip install -e ./saluki_plugin
+
+# 3) Run the quick demo (smoke test):
+poetry run python examples/quick_train_saluki.py
+
+# OR (convenience helper):
+# make bootstrap FRAMEWORK_PATH=/path/to/biolm_utils
+```
+
+Note: the key requirement is that the framework and plugin are installed into the same Python environment (the same Poetry venv). If you see import/discovery issues, that usually means the framework and plugin were installed in different environments — ensure you run both installs inside the same Poetry venv (or reuse the same virtualenv when using pip).
+
+
 A compact toolkit for tokenizing, pre-training and fine-tuning language models on biological sequences (RNA/protein). It also supports interpretation with leave-one-out (LOO) scores.
 
 ## Quick start (Poetry)
@@ -76,6 +103,41 @@ integration helpers (e.g., a CLI that calls discovery during startup).
 
 After you install the plugin into your environment (editable install during dev), you can run a minimal smoke training run that exercises the framework and the plugin registration. This demonstrates an end-to-end invocation without heavy datasets or long runtimes.
 
+0. Install the framework (local dev only)
+
+If you're developing the plugin alongside a local checkout of the framework, prefer
+to use Poetry for environment management and then install the framework into the
+Poetry environment so imports resolve correctly.
+
+Example (recommended, Poetry):
+
+```bash
+# in the framework checkout
+cd /path/to/biolm_utils
+poetry install
+
+# then in the plugin repo, install the framework into the same environment
+cd /path/to/rna_saluki_cnn
+poetry install
+poetry run python -m pip install -e /path/to/biolm_utils
+poetry run python -m pip install -e ./saluki_plugin
+
+Quick bootstrap (one-liner)
+
+If you prefer a single command you can use the included Makefile. From the
+plugin repo root run (adjust FRAMEWORK_PATH if your framework checkout lives
+elsewhere):
+
+```bash
+make bootstrap FRAMEWORK_PATH=/path/to/biolm_utils
+```
+
+This will create the Poetry environment (if needed), install the framework and
+the plugin into the Poetry venv in editable mode so you can iterate locally.
+```
+
+If you don't use Poetry, the previous `pip install -e` approach still works inside a venv.
+
 1. Install the plugin in editable mode:
 
 ```bash
@@ -88,6 +150,27 @@ cd /path/to/rna_saluki_cnn
 ```bash
 .venv/bin/python examples/quick_train_saluki.py
 ```
+
+3. Run the CLI via the framework
+
+After the framework and plugin are installed, you can run the framework CLI to start a small training run or explore modes. Two common options:
+
+- Run the framework CLI script directly from the framework checkout (recommended while developing framework + plugin locally):
+
+```bash
+# in a separate shell, go to the framework repo
+cd /path/to/biolm_utils
+.venv/bin/python biolm.py fine-tune # or other mode
+```
+
+- Or, run the framework module if the framework package is installed into your environment:
+
+```bash
+# run the framework CLI via the package
+.venv/bin/python -m biolm_utils.biolm fine-tune
+```
+
+The framework attempts to discover installed plugins (entry-points group `biolm_utils.plugins`) at startup, so the Saluki plugin will be available to `biolm.py` after installation.
 
 Note: when executed as a file, Python sets the import search path to the script's
 directory which can hide packages in the repository root. The example script now
