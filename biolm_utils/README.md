@@ -276,10 +276,10 @@ environment:
 
 BREAKING CHANGE: explicit GPU counts removed
 ------------------------------------------------
-Note: The legacy `ngpus` option in `settings.environment` and `debugging.ngpus` has been removed. GPU counts are now auto-detected and exposed at `debugging.detected_ngpus` in the final `Namespace` returned by `load_config()`.
+Note: The legacy `ngpus` option in `settings.environment` and `debugging.ngpus` has been removed. GPU counts are now auto-detected and exposed at `debugging.detected_ngpus` in the final structured `BioLMConfig` returned by `load_config()`.
  - Do not set `settings.environment.ngpus` or `debugging.ngpus` in your config YAMLs; they raise a ValueError.
- - Programmatic access: use `from biolm_utils.params import get_detected_ngpus` and call `get_detected_ngpus(args)`.
- - Example: `detected = get_detected_ngpus(args)`.
+ - Programmatic access: use `from biolm_utils.params import get_detected_ngpus` and call `get_detected_ngpus(cfg)` when using the loader return value (e.g., `cfg = load_config([...])`).
+ - Example: `detected = get_detected_ngpus(cfg)`.
 ```
 
 The `data processing` attributes refer to specific pre-processing options that are in detail explained by the command line help.
