@@ -26,8 +26,12 @@ class DummyDataset:
 
 
 def _make_args(blocksize=None, encoding=None):
-    # Use the structured BioLMConfig for test inputs instead of SimpleNamespace
-    from biolm_utils.structured_config import BioLMConfig, TokenizationConfig, TrainingConfig
+    # Use the structured BioLMConfig for test inputs (legacy untyped namespace objects are deprecated)
+    from biolm_utils.structured_config import (
+        BioLMConfig,
+        TokenizationConfig,
+        TrainingConfig,
+    )
 
     return BioLMConfig(
         tokenization=TokenizationConfig(encoding=encoding),

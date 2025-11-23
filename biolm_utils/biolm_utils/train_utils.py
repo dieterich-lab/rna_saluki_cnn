@@ -92,7 +92,7 @@ def compute_metrics_for_classification(dataset, savepath):
 
 def get_tokenizer(args, tokenizer_file, tokenizer_cls, pretraining_required):
 
-    # Support structured config and legacy namespace for `mode`.
+    # Support structured config and (for a short migration window) legacy top-level attributes for `mode`.
     mode = getattr(args, "mode", None)
 
     # if args.pretrainedmodel or (args.mode == "fine-tune" and pretraining_required):

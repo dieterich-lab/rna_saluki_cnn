@@ -294,8 +294,6 @@ helpers introduced in the refactor: `make_run_fn`, `CrossValidator` and
 Example (high-level):
 
 ```py
-from types import SimpleNamespace
-
 from biolm_utils.config import get_config
 from biolm_utils.params import load_config
 from biolm_utils.train_tokenizer import tokenize
@@ -304,17 +302,18 @@ from biolm_utils.runner import make_run_fn
 from biolm_utils.cross_validation import CrossValidator
 from biolm_utils.paths import Paths
 
-# Load your config / args (same objects used by the CLI)
-config = get_config()
-args = load_config()
+# Prefer to construct a structured configuration via the loader.
+# The loader returns a validated `BioLMConfig` dataclass (structured config).
+cfg = load_config(["mode=tokenize"])  # example: pass overrides as list of 'key=value' strings
+config = get_config()  # global/static plugin config
 
-# Prepare tokenizer / datasets as usual
-tokenizer = get_tokenizer(args, /* TOKENIZERFILE */, config.TOKENIZER_CLS, config.PRETRAINING_REQUIRED)
+# Prepare tokenizer / datasets as usual (note functions accept the structured config)
+tokenizer = get_tokenizer(cfg, /* TOKENIZERFILE */, config.TOKENIZER_CLS, config.PRETRAINING_REQUIRED)
 tokenizer_for_trainer = tokenizer
-full_dataset = get_dataset(args, tokenizer, config.ADD_SPECIAL_TOKENS, /* DATASETFILE */, config.DATASET_CLS)
+full_dataset = get_dataset(cfg, tokenizer, config.ADD_SPECIAL_TOKENS, /* DATASETFILE */, config.DATASET_CLS)
 
 # Build the per-run callable (identical signature as legacy nested `run`):
-run_once = make_run_fn(args, config, tokenizer, tokenizer_for_trainer, full_dataset)
+run_once = make_run_fn(cfg, config, tokenizer, tokenizer_for_trainer, full_dataset)
 
 # Create immutable per-run paths (these values come from biolm_utils.entry in the CLI)
 base_paths = Paths(
@@ -326,7 +325,7 @@ base_paths = Paths(
 )
 
 # Instantiate CrossValidator and run the selected mode: fine-tune, predict, interpret, pre-train
-cv = CrossValidator(params=args, dataset=full_dataset, run_once_fn=run_once, base_paths=base_paths)
+cv = CrossValidator(params=cfg, dataset=full_dataset, run_once_fn=run_once, base_paths=base_paths)
 result = cv.execute()
 
 # `result` contains per-mode semantics (list of fold results for cross-validation, or a single value for predict)

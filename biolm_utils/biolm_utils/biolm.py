@@ -34,7 +34,7 @@ from biolm_utils.train_utils import (
     get_trainer,
 )
 
-# Compatibility helpers for structured config vs legacy namespace
+# Compatibility helpers for structured config vs legacy flat attribute access
 data_source = getattr(args, "data_source", None)
 training = getattr(args, "training", None)
 debugging = getattr(args, "debugging", None)

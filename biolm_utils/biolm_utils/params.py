@@ -175,15 +175,15 @@ def load_config(overrides: Optional[List[str]] = None) -> BioLMConfig:
 @hydra.main(config_path="../conf", config_name="config", version_base="1.1")
 def parse_args(cfg: DictConfig) -> BioLMConfig:
     """
-    Parses configuration using Hydra CLI and returns argparse.Namespace for backward compatibility.
+    Parse configuration using Hydra CLI and return a structured BioLMConfig.
 
-    This is the entry point when called via Hydra CLI (e.g., python script.py mode=fine-tune task=regression).
+    This is the Hydra CLI entry point (e.g., `python script.py mode=fine-tune task=regression`).
 
     Args:
         cfg: Hydra DictConfig object
 
     Returns:
-        BioLMConfig instance representing the parsed Hydra configuration
+        BioLMConfig instance representing the parsed and validated configuration
     """
     try:
         return _process_hydra_config(cfg)
@@ -194,13 +194,13 @@ def parse_args(cfg: DictConfig) -> BioLMConfig:
 
 def _process_hydra_config(cfg: DictConfig) -> BioLMConfig:
     """
-    Process a Hydra DictConfig into our structured config and return argparse.Namespace.
+    Convert a Hydra DictConfig into the structured `BioLMConfig` dataclass.
 
     Args:
         cfg: Hydra configuration object
 
     Returns:
-        argparse.Namespace for backward compatibility
+        BioLMConfig - validated, nested dataclass representation of the config
 
     Raises:
         ValueError: If configuration validation fails

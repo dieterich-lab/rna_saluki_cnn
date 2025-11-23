@@ -1,12 +1,11 @@
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
 from transformers.trainer import Trainer
-
-import sys
 
 from biolm_utils.params import get_detected_ngpus, load_config
 from biolm_utils.train_utils import (
@@ -18,6 +17,7 @@ from biolm_utils.trainer import (
     WeightedRegressionTrainer,
     WeightedSamplingTrainer,
 )
+
 
 # Get the arguments from the command line.
 # Support legacy CLI usage (e.g., `saluki.py tokenize --filepath /x`) by
