@@ -6,3 +6,11 @@ readme = "README.md"
 
 [project.entry-points."biolm_utils.plugins"]
 saluki = "saluki_plugin.saluki_ep:get_saluki_config"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["saluki_plugin*"]

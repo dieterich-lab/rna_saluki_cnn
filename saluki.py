@@ -14,10 +14,17 @@ from __future__ import annotations
 from typing import Optional
 
 from biolm_utils.config import Config
-from biolm_utils.plugin_registry import register_plugin, apply_plugin
-
+from biolm_utils.plugin_registry import apply_plugin, register_plugin
 from rna_cnn_dataset import SalukiDataset
 from rna_cnn_models import SalukiModel
+
+# If the package version exists (saluki_plugin) prefer its factory — this
+# makes the top-level wrapper compatible with both the local-source layout and
+# the pip-installable package layout (editable installs).
+try:
+    from saluki_plugin.saluki_ep import get_saluki_config as _pkg_get_saluki_config
+except Exception:
+    _pkg_get_saluki_config = None
 
 
 def get_saluki_config() -> Config:
@@ -64,7 +71,8 @@ from biolm_utils.plugin_registry import get_plugin_factory, unregister_plugin
 # calls work as expected. Guard against re-registration when the module is
 # imported multiple times within the same Python process (tests re-import).
 if get_plugin_factory("saluki") is None:
-    register_plugin("saluki", get_saluki_config)
+    factory_to_register = _pkg_get_saluki_config or get_saluki_config
+    register_plugin("saluki", factory_to_register)
 else:
     # If a previous registration exists we leave it in-place (tests may
     # re-import this module repeatedly). If you want to force a refresh,
