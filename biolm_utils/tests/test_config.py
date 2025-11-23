@@ -18,7 +18,7 @@ class TestConfig:
             MODEL_CLS_FOR_PRETRAINING=mock_model,
             MODEL_CLS_FOR_FINETUNING=mock_model,
             TOKENIZER_CLS=mock_tokenizer,
-            LEARNINGRATE=1e-3,
+            learning_rate=1e-3,
             MAX_GRAD_NORM=0.4,
             WEIGHT_DECAY=0.001,
             SPECIAL_TOKENIZER_FOR_TRAINER_CLS=MagicMock(),

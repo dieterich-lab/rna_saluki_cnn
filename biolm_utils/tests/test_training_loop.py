@@ -1,5 +1,5 @@
 import tempfile
-from argparse import Namespace
+from biolm_utils.structured_config import BioLMConfig, DebuggingConfig, TrainingConfig
 from pathlib import Path
 
 import numpy as np
@@ -43,14 +43,13 @@ class DummyModel(nn.Module):
 
 
 def test_minimal_training_loop(tmp_path):
-    # Prepare dummy args
-    args = Namespace()
-    args.mode = "fine-tune"
-    args.task = "regression"
-    args.dev = False
-    args.silent = True
-    args.patience = 1
-    args.batchsize = 2
+    # Prepare dummy structured config
+    args = BioLMConfig(
+        mode="fine-tune",
+        task="regression",
+        debugging=DebuggingConfig(dev=False, silent=True),
+        training=TrainingConfig(patience=1, batchsize=2),
+    )
 
     # Build tokenizer-less minimal environment
     train_ds = DummyDataset(n=8)

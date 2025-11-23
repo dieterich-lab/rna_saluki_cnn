@@ -158,7 +158,14 @@ class HFSaluki(PreTrainedModel):
         # Do not rely on callers to pass this via configs — set it explicitly here.
         SALUKI_BLOCKSIZE = 12288
         # Defensive check: if args attempts to set a different blocksize, raise.
-        if getattr(args, "blocksize", None) not in (None, SALUKI_BLOCKSIZE):
+        # Support both legacy top-level blocksize and nested training.blocksize.
+        blocksize = getattr(args, "blocksize", None)
+        if blocksize is None:
+            training = getattr(args, "training", None)
+            if training is not None:
+                blocksize = getattr(training, "blocksize", None)
+
+        if blocksize not in (None, SALUKI_BLOCKSIZE):
             raise ValueError(
                 f"Saluki requires blocksize={SALUKI_BLOCKSIZE}; do not set a different blocksize in global config."
             )

@@ -92,8 +92,11 @@ def compute_metrics_for_classification(dataset, savepath):
 
 def get_tokenizer(args, tokenizer_file, tokenizer_cls, pretraining_required):
 
+    # Support structured config and legacy namespace for `mode`.
+    mode = getattr(args, "mode", None)
+
     # if args.pretrainedmodel or (args.mode == "fine-tune" and pretraining_required):
-    if args.mode == "fine-tune" and pretraining_required:
+    if mode == "fine-tune" and pretraining_required:
         tokenizer_config_file = (
             tokenizer_file.parent / "pre-train" / "tokenizer_config.json"
         )
@@ -120,13 +123,16 @@ def get_tokenizer(args, tokenizer_file, tokenizer_cls, pretraining_required):
             tokenizer_json = json.load(f)
         # Remove the meta data left and right correctly
         # [1] and [2] refer to the position where the sequence is isolated by means of the `columnsep`
+        col = getattr(getattr(args, "data_source", None), "columnsep", "\t")
+        seqpos = getattr(getattr(args, "data_source", None), "seqpos", 1)
         tokenizer_json["pre_tokenizer"]["pretokenizers"][1]["pattern"][
             "Regex"
-        ] = f"([^{args.columnsep}]*{args.columnsep}){{{int(args.seqpos) - 1}}}"
+        ] = f"([^{col}]*{col}){{{int(seqpos) - 1}}}"
         tokenizer_json["pre_tokenizer"]["pretokenizers"][2]["pattern"][
             "Regex"
-        ] = f"{args.columnsep}.*"
-        if args.tokensep is not None:
+        ] = f"{col}.*"
+        tokensep = getattr(getattr(args, "data_source", None), "tokensep", None)
+        if tokensep is not None:
             # Last position (-1) is for stripping the quotation marks.
             # We need to include the new tokensep replacement before.
             num_elements = len(tokenizer_json["normalizer"]["normalizers"])
@@ -137,14 +143,17 @@ def get_tokenizer(args, tokenizer_file, tokenizer_cls, pretraining_required):
                     "String"
                 ] = args.tokensep
             else:  # here, we have to create a new one
-                if args.encoding == "bpe":
+                encoding = getattr(
+                    getattr(args, "tokenization", None), "encoding", "atomic"
+                )
+                if encoding == "bpe":
                     replacement = ""
                 elif args.encoding == "atomic":
                     replacement = " "
                 pattern = (
                     {
                         "type": "Replace",
-                        "pattern": {"String": args.tokensep},
+                        "pattern": {"String": tokensep},
                         "content": replacement,
                     },
                 )
@@ -168,8 +177,13 @@ def get_tokenizer(args, tokenizer_file, tokenizer_cls, pretraining_required):
                 truncation_side=trunc_side,
             )
     else:  # pre-training data is the same as the data for tokenizing
+        blocksize = getattr(
+            getattr(args, "training", None),
+            "blocksize",
+            getattr(args, "blocksize", None),
+        )
         logger.info(
-            f"Loading tokenizer from {tokenizer_file} and setting it to {args.blocksize} model max length"
+            f"Loading tokenizer from {tokenizer_file} and setting it to {blocksize} model max length"
         )
         tokenizer = tokenizer_cls(
             tokenizer_file=str(tokenizer_file),
@@ -180,9 +194,13 @@ def get_tokenizer(args, tokenizer_file, tokenizer_cls, pretraining_required):
             sep_token="[SEP]",
             bos_token="[BOS]",
             eos_token="[EOS]",
-            model_max_length=args.blocksize,
+            model_max_length=blocksize,
             truncation=True,
-            truncation_side="left" if args.lefttailing else "right",
+            truncation_side=(
+                "left"
+                if getattr(getattr(args, "tokenization", None), "lefttailing", False)
+                else "right"
+            ),
         )
     tokenizer.name_or_path = tokenizer_file
     return tokenizer
@@ -191,9 +209,15 @@ def get_tokenizer(args, tokenizer_file, tokenizer_cls, pretraining_required):
 def get_dataset(args, tokenizer, add_special_tokens, dataset_file, dataset_cls):
     if (
         not dataset_file.exists()  # required data file doesn't exist yet
-        or args.getdata  # only tokenize the data and exit
-        or args.dev  # debug mode
-        or args.forcenewdata  # debug mode
+        or getattr(
+            getattr(args, "debugging", None), "getdata", getattr(args, "getdata", False)
+        )
+        or getattr(getattr(args, "debugging", None), "dev", getattr(args, "dev", False))
+        or getattr(
+            getattr(args, "debugging", None),
+            "forcenewdata",
+            getattr(args, "forcenewdata", False),
+        )
         # or args.mode
         # == "predict"  # here, we expect a new file which should not be saved
     ):
@@ -203,11 +227,15 @@ def get_dataset(args, tokenizer, add_special_tokens, dataset_file, dataset_cls):
             add_special_tokens=add_special_tokens,
         )
         # if args.mode != "predict" and not args.dev:
-        if not args.dev:
+        if not getattr(
+            getattr(args, "debugging", None), "dev", getattr(args, "dev", False)
+        ):
             logger.info(f"Saving dataset to {dataset_file}")
             with open(dataset_file, "wb") as f:
                 pickle.dump(dataset, f)
-        if args.getdata:
+        if getattr(
+            getattr(args, "debugging", None), "getdata", getattr(args, "getdata", False)
+        ):
             sys.exit()
     else:  # dataset is available
         logger.info(f"Loading dataset from {dataset_file}")
@@ -231,7 +259,7 @@ def get_trainer(
     compute_metrics,
     labels,
 ):
-    if args.mode == "pre-train":
+    if getattr(args, "mode", None) == "pre-train":
         trainer = trainer_cls(
             model=model,
             tokenizer=tokenizer,
@@ -252,9 +280,17 @@ def get_trainer(
             eval_dataset=val_dataset,
             callbacks=(
                 [
-                    EarlyStoppingCallback(early_stopping_patience=args.patience),
+                    EarlyStoppingCallback(
+                        early_stopping_patience=getattr(
+                            getattr(args, "training", None),
+                            "patience",
+                            getattr(args, "patience", 10),
+                        )
+                    ),
                 ]
-                if not args.dev
+                if not getattr(
+                    getattr(args, "debugging", None), "dev", getattr(args, "dev", False)
+                )
                 else None
             ),
             compute_metrics=compute_metrics,
@@ -272,9 +308,17 @@ def get_trainer(
             eval_dataset=val_dataset,
             callbacks=(
                 [
-                    EarlyStoppingCallback(early_stopping_patience=args.patience),
+                    EarlyStoppingCallback(
+                        early_stopping_patience=getattr(
+                            getattr(args, "training", None),
+                            "patience",
+                            getattr(args, "patience", 10),
+                        )
+                    ),
                 ]
-                if not args.dev
+                if not getattr(
+                    getattr(args, "debugging", None), "dev", getattr(args, "dev", False)
+                )
                 else None
             ),
             compute_metrics=compute_metrics,
@@ -345,8 +389,16 @@ def get_model_and_config(
     pretraining_required,
     scaler=None,
 ):
-    if args.mode == "pre-train" or (
-        args.mode == "fine-tune" and (not pretraining_required or args.fromscratch)
+    if getattr(args, "mode", None) == "pre-train" or (
+        getattr(args, "mode", None) == "fine-tune"
+        and (
+            not pretraining_required
+            or getattr(
+                getattr(args, "training", None),
+                "fromscratch",
+                getattr(args, "fromscratch", False),
+            )
+        )
     ):
         model_config = model_cls.get_config(
             args=args,
@@ -355,8 +407,10 @@ def get_model_and_config(
             dataset=dataset,
             nlabels=nlabels,
         )
-        if not args.resume:
-            if args.mode == "pre-train":
+        if not getattr(args, "resume", False) and not getattr(
+            getattr(args, "training", None), "resume", False
+        ):
+            if getattr(args, "mode", None) == "pre-train":
                 logger.info(f"Initializing new {model_cls} model for pre-training.")
             else:
                 logger.info(f"Initializing new {model_cls} model for fine-tuning.")
@@ -388,7 +442,7 @@ def get_model_and_config(
         logger.info(
             f"Loaded {model_cls} model with weights from {model_load_path} saved on {datetime.fromtimestamp(model_load_path.stat().st_ctime)} with {n_epochs} epochs trained."
         )
-    if args.mode != "pre-train":
+    if getattr(args, "mode", None) != "pre-train":
         if scaler is not None:
             model.scaler = scaler
         else:

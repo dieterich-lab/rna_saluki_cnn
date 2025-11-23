@@ -15,12 +15,18 @@ def test_help_message_runs():
     env["PYTHONPATH"] = str(repo_root)
     # ensure the biolm_utils package is importable from the subprocess environment
     import_check = subprocess.run(
-        [sys.executable, "-c", "import importlib; importlib.import_module('biolm_utils')"],
+        [
+            sys.executable,
+            "-c",
+            "import importlib; importlib.import_module('biolm_utils')",
+        ],
         env=env,
         capture_output=True,
     )
     if import_check.returncode != 0:
-        pytest.skip("biolm_utils package not available in test environment; skipping smoke-run help test")
+        pytest.skip(
+            "biolm_utils package not available in test environment; skipping smoke-run help test"
+        )
 
     result = subprocess.run(
         [sys.executable, "saluki.py", "tokenize", "--help"],
@@ -33,7 +39,9 @@ def test_help_message_runs():
         # (e.g., missing newer plugin_registry module). In that case skip the test
         errmsg = result.stderr.decode(errors="ignore")
         if "No module named 'biolm_utils.plugin_registry'" in errmsg:
-            pytest.skip("saluki entry imports missing newer biolm_utils; skipping help check")
+            pytest.skip(
+                "saluki entry imports missing newer biolm_utils; skipping help check"
+            )
         # otherwise fail the test so other errors surface
     assert result.returncode == 0
     assert b"usage" in result.stdout.lower()

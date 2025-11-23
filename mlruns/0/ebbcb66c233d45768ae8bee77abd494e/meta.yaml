@@ -1,0 +1,14 @@
+artifact_uri: file:///beegfs/prj/RNA_NLP/rna_saluki_cnn/mlruns/0/ebbcb66c233d45768ae8bee77abd494e/artifacts
+end_time: 1763898213991
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: ebbcb66c233d45768ae8bee77abd494e
+run_name: /tmp/pytest-of-pwiesenbach/pytest-73/test_minimal_training_loop0/outputs
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763898213505
+status: 3
+tags: []
+user_id: pwiesenbach

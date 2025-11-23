@@ -13,11 +13,11 @@ class RNACNNDataset(RNABaseDataset):
         # and must not be changed in global configs — fail fast if user overrides
         # them here so plugins stay portable and consistent.
         # args will be passed to RNABaseDataset; read from provided dict first
-        # The constructor is intentionally permissive to accept either a
-        # Namespace (args) or a dict of keyword arguments. When called via
-        # `dataset_cls(tokenizer=..., args=args, ...)` the `args` variable will
-        # be a dict with an `args` key holding the Namespace. Normalize that
-        # here so the invariant checks below are robust.
+        # The constructor is intentionally permissive: callers may pass either
+        # the structured `BioLMConfig`/compatible object or a plain dict of
+        # keyword arguments. When called via `dataset_cls(tokenizer=..., args=args, ...)`
+        # the `args` variable may be a dict with an `args` key holding the
+        # config object — normalize that here so the invariant checks below are robust.
         if (
             isinstance(args, dict)
             and "args" in args
