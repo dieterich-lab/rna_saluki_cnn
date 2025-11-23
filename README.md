@@ -46,6 +46,15 @@ See the `biolm_utils/` package for full details.
 
 See DOCS/ for a short guide on framework internals and a plugin example (Saluki).
 
+## Plugin separation (recommended)
+
+The recommended layout is to keep the *framework* (biolm_utils) and *plugins* (e.g. Saluki) in separate repositories.
+
+- This repository provides the framework and a small plugin registry (`biolm_utils/plugin_registry.py`).
+- Plugins should live in separate repositories (like `rna_saluki_cnn`) and register a lightweight factory that returns a `biolm_utils.config.Config` instance.
+
+We include a thin example plugin here under `examples/plugin_template` and `saluki.py` demonstrates a thin Saluki wrapper that registers the plugin with the registry and exposes a small `activate()` helper for tests and wrappers.
+
 
 ## Output layout
 
