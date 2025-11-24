@@ -15,8 +15,11 @@ from typing import Optional
 
 from biolm_utils.config import Config
 from biolm_utils.plugin_registry import apply_plugin, register_plugin
-from rna_cnn_dataset import SalukiDataset
-from rna_cnn_models import SalukiModel
+# We use the packaged plugin implementation as the canonical source of truth.
+# Importing from `saluki_plugin` keeps the repo layout (package + examples) clean
+# and avoids duplication between root and package-level code.
+from saluki_plugin.dataset import SalukiDataset
+from saluki_plugin.models import SalukiModel
 
 # If the package version exists (saluki_plugin) prefer its factory — this
 # makes the top-level wrapper compatible with both the local-source layout and
