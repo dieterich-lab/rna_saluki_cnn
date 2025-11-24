@@ -183,6 +183,54 @@ ensure the environment is using the project venv (or set PYTHONPATH=.).
 
 The demo will perform a tiny training epoch (smoke) and should finish quickly. If everything succeeds, your plugin is correctly discoverable and compatible with the framework.
 
+## Developer guide — single-env workflow (copy/paste)
+
+We use a single shared Python environment for framework + plugin development — this is the simplest, most deterministic workflow and what we recommend for contributors.
+
+1) Create the framework Poetry venv and install its dependencies:
+
+```bash
+cd /path/to/biolm_utils
+poetry env use $(which python)   # optional: pick which system Python will back the venv
+poetry install                  # creates the Poetry venv and installs framework deps
+```
+
+2) Install BOTH framework and plugin into the same environment (editable installs):
+
+```bash
+cd /path/to/rna_saluki_cnn
+# find the same venv python that belongs to the framework venv
+VENV_PYTHON=$(poetry --directory /path/to/biolm_utils env info -p)/bin/python
+$VENV_PYTHON -m pip install -e /path/to/biolm_utils
+$VENV_PYTHON -m pip install -e ./saluki_plugin
+```
+
+3) Run the quick demo (smoke test) using the same environment:
+
+```bash
+poetry run python examples/quick_train_saluki.py
+```
+
+Run tests & simulate CI locally
+-------------------------------
+To run the tests locally inside the plugin's Poetry venv and simulate the CI smoke flow:
+
+```bash
+# run basic unit tests
+poetry run pytest -q tests/test_saluki_plugin.py
+
+# run integration test that performs an editable install of the packaged plugin
+poetry run pytest -q tests/test_plugin_install_integration.py
+
+# convenience helper that creates the venv and installs framework + plugin into it
+make bootstrap FRAMEWORK_PATH=/path/to/biolm_utils
+poetry run python examples/quick_train_saluki.py
+```
+
+Notes
+- The canonical packaging entry-point is `saluki_plugin/` (install with `pip install -e ./saluki_plugin`).
+- Keep a single active venv for both framework and plugin development to avoid import/discovery confusion.
+
 
 ## Output layout
 
