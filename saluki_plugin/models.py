@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import torch.nn as nn
-from transformers import PreTrainedModel
-
+from biolm_utils.base_model import BaseModel
 
 # The full implementation lives in `HFSaluki` below. We expose `SalukiModel`
 # as an alias to the huggingface-compatible implementation so the framework
@@ -145,7 +144,7 @@ class Saluki(nn.Module):
         return x
 
 
-class HFSaluki(PreTrainedModel):
+class HFSaluki(BaseModel):
     def __init__(self, config):
         super().__init__(config)
         self.model = Saluki(input_size=config.input_size, num_labels=config.num_labels)
