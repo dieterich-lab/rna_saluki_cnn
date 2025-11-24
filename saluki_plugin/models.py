@@ -27,7 +27,11 @@ class MidBlock(nn.Module):
         dropout,
     ):
         super().__init__()
-        self.conv = nn.Conv1d(in_channels=input_channels, out_channels=output_channels, kernel_size=kernel_width)
+        self.conv = nn.Conv1d(
+            in_channels=input_channels,
+            out_channels=output_channels,
+            kernel_size=kernel_width,
+        )
         self.layernorm = nn.LayerNorm(normalized_shape=output_channels)
         self.dropout = nn.Dropout(p=dropout)
         self.maxpool = nn.MaxPool1d(kernel_size=maxpool_width, stride=maxpool_stride)
@@ -47,7 +51,9 @@ class MidBlock(nn.Module):
 class EntryBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_width):
         super().__init__()
-        self.conv = nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_width)
+        self.conv = nn.Conv1d(
+            in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_width
+        )
         self.layernorm = nn.LayerNorm(normalized_shape=out_channels)
         self.relu = nn.ReLU()
 
@@ -81,7 +87,12 @@ class DenseBlock(nn.Module):
 class GruBlock(nn.Module):
     def __init__(self, channels):
         super().__init__()
-        self.gru = nn.GRU(input_size=channels, hidden_size=channels, batch_first=True, bidirectional=False)
+        self.gru = nn.GRU(
+            input_size=channels,
+            hidden_size=channels,
+            batch_first=True,
+            bidirectional=False,
+        )
         self.batch_norm = nn.BatchNorm1d(num_features=channels)
         self.relu = nn.ReLU()
 
@@ -94,12 +105,38 @@ class GruBlock(nn.Module):
 
 
 class Saluki(nn.Module):
-    def __init__(self, input_size, channels=64, kernel_width=5, maxpool_width=2, maxpool_stride=2, layers=6, num_labels=1, dropout=0.3):
+    def __init__(
+        self,
+        input_size,
+        channels=64,
+        kernel_width=5,
+        maxpool_width=2,
+        maxpool_stride=2,
+        layers=6,
+        num_labels=1,
+        dropout=0.3,
+    ):
         super().__init__()
-        self.entry_block = EntryBlock(in_channels=input_size, out_channels=channels, kernel_width=kernel_width)
-        self.mid_blocks = nn.ModuleList([MidBlock(channels, channels, kernel_width, maxpool_width, maxpool_stride, dropout) for _ in range(layers)])
+        self.entry_block = EntryBlock(
+            in_channels=input_size, out_channels=channels, kernel_width=kernel_width
+        )
+        self.mid_blocks = nn.ModuleList(
+            [
+                MidBlock(
+                    channels,
+                    channels,
+                    kernel_width,
+                    maxpool_width,
+                    maxpool_stride,
+                    dropout,
+                )
+                for _ in range(layers)
+            ]
+        )
         self.gru_block = GruBlock(channels=channels)
-        self.dense_block = DenseBlock(channels=channels, dropout=dropout, out_features=num_labels)
+        self.dense_block = DenseBlock(
+            channels=channels, dropout=dropout, out_features=num_labels
+        )
 
     def forward(self, x):
         x = x.permute(0, 2, 1)
@@ -132,9 +169,15 @@ class HFSaluki(PreTrainedModel):
                 blocksize = getattr(training, "blocksize", None)
 
         if blocksize not in (None, SALUKI_BLOCKSIZE):
-            raise ValueError(f"Saluki requires blocksize={SALUKI_BLOCKSIZE}; do not set a different blocksize in global config.")
+            raise ValueError(
+                f"Saluki requires blocksize={SALUKI_BLOCKSIZE}; do not set a different blocksize in global config."
+            )
 
-        config = config_cls(vocab_size=len(tokenizer), max_position_embeddings=SALUKI_BLOCKSIZE, pad_token_id=tokenizer.pad_token_id)
+        config = config_cls(
+            vocab_size=len(tokenizer),
+            max_position_embeddings=SALUKI_BLOCKSIZE,
+            pad_token_id=tokenizer.pad_token_id,
+        )
         cat0 = dataset.OHE.categories_[0]
         try:
             cat_size = cat0.size
