@@ -64,6 +64,6 @@ class RNACNNDataset(RNABaseDataset):
         example["input_ids"] = torch.tensor(example["input_ids"], dtype=torch.float)
         return example
 
-# Export the full RNACNNDataset under the stable plugin name `SalukiDataset` so
-# the framework API `Config.dataset_cls` can reference it by the expected symbol.
-SalukiDataset = RNACNNDataset
+
+# The canonical dataset implementation for this plugin is `RNACNNDataset`.
+# The plugin entry-point exposes this class directly as the dataset implementation.

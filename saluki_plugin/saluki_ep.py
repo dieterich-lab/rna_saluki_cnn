@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from biolm_utils.config import Config
 
-from .dataset import SalukiDataset
+from .dataset import RNACNNDataset
 from .models import SalukiModel
 
 
@@ -37,7 +37,7 @@ def get_saluki_config() -> Config:
         add_special_tokens=False,
         config_cls=None,
         pretraining_required=False,
-        dataset_cls=SalukiDataset,
+        dataset_cls=RNACNNDataset,
     )
 
 

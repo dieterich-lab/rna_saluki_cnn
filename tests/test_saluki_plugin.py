@@ -45,5 +45,5 @@ def test_saluki_apply_sets_config():
     assert cfg is not None
     # Expect the active plugin to be 'saluki'
     assert get_current_plugin() == "saluki"
-    # The dataset class should match the SalukiDataset type by name
+    # The dataset class should be present in the active config
     assert hasattr(cfg, "DATASET_CLS") or hasattr(cfg, "dataset_cls")
