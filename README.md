@@ -84,14 +84,17 @@ We include a thin example plugin here under `examples/plugin_template` and `salu
 
 ### Packaging / entry-point
 
+The canonical, supported packaging in this repository is the `saluki_plugin` package
+(recommended). The root-level top-level implementation files were consolidated into
+the `saluki_plugin/` package to avoid duplication and make the install flow unambiguous.
+
 You can package this repository (or the `saluki_plugin` subpackage) so it exposes a
 `biolm_utils.plugins` entry-point. For local development you can install the
 plugin in editable mode:
 
 ```bash
 # editable install (pip)
-pip install -e .
-# or install the example plugin in this repo directly
+# install the packaged plugin (preferred):
 pip install -e ./saluki_plugin
 ```
 
