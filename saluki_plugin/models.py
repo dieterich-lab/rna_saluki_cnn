@@ -6,14 +6,9 @@ import torch.nn as nn
 from transformers import PreTrainedModel
 
 
-class SalukiModel(PreTrainedModel):
-    config_class = None
-
-    def __init__(self, config: Any, *args, **kwargs):
-        super().__init__(config)
-
-    def forward(self, *args, **kwargs):
-        raise NotImplementedError("SalukiModel is a placeholder and not runnable")
+# The full implementation lives in `HFSaluki` below. We expose `SalukiModel`
+# as an alias to the huggingface-compatible implementation so the framework
+# can reference `SalukiModel` directly from plugin imports.
 
 
 class MidBlock(nn.Module):
@@ -186,3 +181,7 @@ class HFSaluki(PreTrainedModel):
         config.input_size = cat_size + dataset.nspecs
         config.num_labels = nlabels
         return config
+
+
+# Expose the full model implementation as `SalukiModel` for the framework.
+SalukiModel = HFSaluki

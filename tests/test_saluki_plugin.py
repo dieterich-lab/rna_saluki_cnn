@@ -17,6 +17,7 @@ def test_saluki_plugin_registered():
     # Import the canonical packaged plugin implementation and register its factory
     # with the framework's registry for tests.
     from saluki_plugin import saluki_ep as saluki_pkg
+
     if get_plugin_factory("saluki") is None:
         # register the package factory into the framework registry
         from biolm_utils.plugin_registry import register_plugin
@@ -33,6 +34,7 @@ def test_saluki_apply_sets_config():
 
     # Register packaged factory into the framework registry for this test run
     from saluki_plugin import saluki_ep as saluki_pkg
+
     if get_plugin_factory("saluki") is None:
         from biolm_utils.plugin_registry import register_plugin
 

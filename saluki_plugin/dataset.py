@@ -9,18 +9,6 @@ from sklearn.preprocessing import OneHotEncoder
 from torch.utils.data import Dataset
 
 
-class SalukiDataset(Dataset):
-    def __init__(self, items: List[Any] | None = None):
-        # lightweight placeholder used by some tests and examples
-        self._items = items or [0, 1, 2]
-
-    def __len__(self) -> int:
-        return len(self._items)
-
-    def __getitem__(self, idx: int) -> Any:
-        return self._items[idx]
-
-
 class RNACNNDataset(RNABaseDataset):
     def __init__(self, **args):
         # enforce Saluki invariants early (one-hot encoding + fixed blocksize)
@@ -75,3 +63,7 @@ class RNACNNDataset(RNABaseDataset):
             example["input_ids"] = np.concatenate((example["input_ids"], spec), axis=1)
         example["input_ids"] = torch.tensor(example["input_ids"], dtype=torch.float)
         return example
+
+# Export the full RNACNNDataset under the stable plugin name `SalukiDataset` so
+# the framework API `Config.dataset_cls` can reference it by the expected symbol.
+SalukiDataset = RNACNNDataset
