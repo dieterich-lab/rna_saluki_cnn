@@ -1,33 +1,45 @@
 # bioml_utils — utilities for bioinformatic language models
 
-## Quick start — exact copy/paste (Poetry, local dev)
+## Overview
 
-These are the minimal commands a new developer can copy/paste to get a working local development environment for both the framework and the Saluki plugin. They assume you have two local checkouts: one for the framework (`biolm_utils`) and one for the plugin (`rna_saluki_cnn`).
+This repository provides the Saluki plugin for `biolm_utils`, a framework for tokenizing, pre-training, and fine-tuning language models on biological sequences.
+
+The Saluki plugin includes a CNN-based model (`HFSaluki`) and dataset (`RNACNNDataset`) for RNA sequence analysis.
+
+## Installation
+
+Follow the single-env workflow to install both the framework and plugin:
 
 ```bash
-# 1) Create the framework venv and install dependencies
+# 1) Install framework
 cd /path/to/biolm_utils
-poetry env use $(which python)  # optional: choose interpreter
 poetry install
 
-# 2) Create the plugin venv (Poetry) and install the framework + plugin into the same environment
+# 2) Install plugin in same environment
 cd /path/to/rna_saluki_cnn
-# use --no-root so the plugin repo itself doesn't try to install as root package
-poetry install --no-root
-poetry run python -m pip install -e /path/to/biolm_utils
-poetry run python -m pip install -e ./saluki_plugin
-
-# 3) Run the quick demo (smoke test):
-poetry run python examples/quick_train_saluki.py
-
-# OR (convenience helper):
-# make bootstrap FRAMEWORK_PATH=/path/to/biolm_utils
+poetry install
 ```
 
-Note: the key requirement is that the framework and plugin are installed into the same Python environment (the same Poetry venv). If you see import/discovery issues, that usually means the framework and plugin were installed in different environments — ensure you run both installs inside the same Poetry venv (or reuse the same virtualenv when using pip).
+## Plugin Structure
 
+The Saluki plugin follows the modern 3-file plugin architecture:
 
-A compact toolkit for tokenizing, pre-training and fine-tuning language models on biological sequences (RNA/protein). It also supports interpretation with leave-one-out (LOO) scores.
+- **`saluki_plugin/dataset.py`** - RNA dataset implementation (`RNACNNDataset`)
+- **`saluki_plugin/models.py`** - CNN model implementation (`SalukiModel`)  
+- **`saluki_plugin/config.py`** - Plugin configuration factory (`get_saluki_config()`)
+
+The `config.py` uses the new `PluginConfig` system with comprehensive documentation for each setting.
+
+## Using Saluki
+
+After installation, activate the plugin in your code:
+
+```python
+from biolm_utils.plugin_registry import apply_plugin
+apply_plugin('saluki')  # Sets Saluki as active config
+```
+
+Then use the framework's CLI or API with Saluki's model and dataset.
 
 ## Quick start (Poetry)
 

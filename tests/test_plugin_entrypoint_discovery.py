@@ -18,9 +18,9 @@ def test_saluki_entrypoint_discovery(monkeypatch):
         def load(self):
             return self._loader
 
-    # loader resolves to saluki.get_saluki_config
+    # loader resolves to saluki_plugin.saluki_ep.get_saluki_config
     def loader():
-        from saluki import get_saluki_config
+        from saluki_plugin.saluki_ep import get_saluki_config
 
         return get_saluki_config
 
@@ -28,7 +28,12 @@ def test_saluki_entrypoint_discovery(monkeypatch):
         plugin_loader,
         "entry_points",
         lambda: SimpleNamespace(
-            select=lambda group=None: [DummyEP("saluki", loader())]
+            select=lambda group=None: (
+                [DummyEP("saluki", loader())] if group == "biolm_utils.plugins" else []
+            ),
+            __iter__=lambda self: iter(
+                [DummyEP("saluki", loader())]
+            ),  # Make it iterable for fallback
         ),
     )
 

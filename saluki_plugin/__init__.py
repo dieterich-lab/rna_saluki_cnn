@@ -5,6 +5,6 @@ integration test. It intentionally keeps the placeholder dataset/model
 inside the package so the package is self-contained when installed.
 """
 
-from .saluki_ep import get_saluki_config
+from .config import get_saluki_config
 
 __all__ = ["get_saluki_config"]

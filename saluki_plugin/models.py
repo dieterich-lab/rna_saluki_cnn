@@ -5,6 +5,9 @@ from typing import Any
 import torch.nn as nn
 from biolm_utils.base_model import BaseModel
 
+# Saluki model constants
+SALUKI_BLOCKSIZE = 12288
+
 # The full implementation lives in `HFSaluki` below. We expose `SalukiModel`
 # as an alias to the huggingface-compatible implementation so the framework
 # can reference `SalukiModel` directly from plugin imports.
@@ -155,7 +158,6 @@ class HFSaluki(BaseModel):
 
     @staticmethod
     def get_config(args, config_cls, tokenizer, dataset, nlabels):
-        SALUKI_BLOCKSIZE = 12288
         blocksize = getattr(args, "blocksize", None)
         if blocksize is None:
             training = getattr(args, "training", None)

@@ -8,6 +8,9 @@ from biolm_utils.rna_datasets import RNABaseDataset
 from sklearn.preprocessing import OneHotEncoder
 from torch.utils.data import Dataset
 
+# Saluki model constants
+SALUKI_BLOCKSIZE = 12288
+
 
 class RNACNNDataset(RNABaseDataset):
     def __init__(self, **args):
@@ -31,7 +34,7 @@ class RNACNNDataset(RNABaseDataset):
                 "Saluki requires tokenization.encoding='atomic' (one-hot input). Do not set a different encoding in global configs; customize tokenization only in plugin-specific code."
             )
 
-        expected_blocksize = 12288
+        expected_blocksize = SALUKI_BLOCKSIZE
         blocksize = (
             call_args.get("blocksize")
             if isinstance(call_args, dict)

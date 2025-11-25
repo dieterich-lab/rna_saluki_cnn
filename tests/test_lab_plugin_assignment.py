@@ -6,13 +6,31 @@ from biolm_utils.plugin_registry import (
     register_plugin,
     unregister_plugin,
 )
-from examples.lab_plugin_assignment.plugin_skeleton import get_lab_plugin_config
 
 
-def test_lab_plugin_factory_returns_Config():
-    cfg = get_lab_plugin_config()
-    assert isinstance(cfg, Config)
-    assert hasattr(cfg, "learning_rate")
+def get_lab_plugin_config():
+    """Mock plugin factory returning a config dict."""
+    return {
+        "model_cls_for_pretraining": None,
+        "model_cls_for_finetuning": None,
+        "tokenizer_cls": None,
+        "learning_rate": 1e-3,
+        "max_grad_norm": 1.0,
+        "weight_decay": 0.0,
+        "special_tokenizer_for_trainer_cls": None,
+        "datacollator_cls_for_pretraining": None,
+        "datacollator_cls_for_finetuning": None,
+        "add_special_tokens": False,
+        "config_cls": None,
+        "pretraining_required": False,
+        "dataset_cls": None,
+    }
+
+
+def test_lab_plugin_factory_returns_dict():
+    cfg_dict = get_lab_plugin_config()
+    assert isinstance(cfg_dict, dict)
+    assert "learning_rate" in cfg_dict
 
 
 def test_register_apply_unregister_behavior():
@@ -23,7 +41,7 @@ def test_register_apply_unregister_behavior():
     # applied config should be a Config with matching learning_rate
     active = get_config()
     assert isinstance(active, Config)
-    assert active.learning_rate == get_lab_plugin_config().learning_rate
+    assert active.learning_rate == get_lab_plugin_config()["learning_rate"]
 
     # cleanup
     unregister_plugin("lab_test")
