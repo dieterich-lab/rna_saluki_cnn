@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from biolm_utils.structured_config import BioLMConfig, SettingsConfig
+from biolm.structured_config import BioLMConfig, SettingsConfig
 
 
 def make_fake_mlflow(recorder: dict):
@@ -40,7 +40,7 @@ def test_start_mlflow_run_enabled(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "mlflow", fake_mlflow)
 
     # import here to use the lazy importer in the module under test
-    from biolm_utils.mlflow_integration import start_mlflow_run
+    from biolm.mlflow_integration import start_mlflow_run
 
     args = BioLMConfig(
         mode="fine-tune",
@@ -79,7 +79,7 @@ def test_start_mlflow_run_disabled(monkeypatch):
     fake_mlflow = make_fake_mlflow(recorder)
     monkeypatch.setitem(sys.modules, "mlflow", fake_mlflow)
 
-    from biolm_utils.mlflow_integration import start_mlflow_run
+    from biolm.mlflow_integration import start_mlflow_run
 
     args = BioLMConfig(
         mode="fine-tune", settings=SettingsConfig(mlflow={"enabled": False})

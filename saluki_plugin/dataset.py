@@ -4,7 +4,7 @@ from typing import Any, List
 
 import numpy as np
 import torch
-from biolm_utils.rna_datasets import RNABaseDataset
+from biolm.rna_datasets import RNABaseDataset
 from sklearn.preprocessing import OneHotEncoder
 from torch.utils.data import Dataset
 
@@ -25,9 +25,13 @@ class RNACNNDataset(RNABaseDataset):
             call_args = args
 
         encoding = (
-            call_args.get("encoding")
-            if isinstance(call_args, dict)
-            else getattr(call_args, "encoding", None)
+            call_args.tokenization.encoding
+            if hasattr(call_args, "tokenization")
+            else (
+                call_args.get("encoding")
+                if isinstance(call_args, dict)
+                else getattr(call_args, "encoding", None)
+            )
         )
         if encoding != "atomic":
             raise ValueError(
@@ -36,9 +40,13 @@ class RNACNNDataset(RNABaseDataset):
 
         expected_blocksize = SALUKI_BLOCKSIZE
         blocksize = (
-            call_args.get("blocksize")
-            if isinstance(call_args, dict)
-            else getattr(call_args, "blocksize", None)
+            call_args.training.blocksize
+            if hasattr(call_args, "training")
+            else (
+                call_args.get("blocksize")
+                if isinstance(call_args, dict)
+                else getattr(call_args, "blocksize", None)
+            )
         )
         if blocksize != expected_blocksize:
             raise ValueError(
@@ -61,7 +69,12 @@ class RNACNNDataset(RNABaseDataset):
         example["input_ids"] = self.OHE.transform(
             np.reshape(example["input_ids"], (-1, 1))
         )
-        if self.args.specifiersep is not None:
+        specifiersep = (
+            getattr(self.args.data_source, "specifiersep", None)
+            if hasattr(self.args, "data_source")
+            else getattr(self.args, "specifiersep", None)
+        )
+        if specifiersep is not None:
             spec = self.specs[i]
             example["input_ids"] = np.concatenate((example["input_ids"], spec), axis=1)
         example["input_ids"] = torch.tensor(example["input_ids"], dtype=torch.float)

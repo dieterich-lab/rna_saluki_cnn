@@ -1,1 +1,1 @@
-# Tests for biolm_utils
+# Tests for biolm

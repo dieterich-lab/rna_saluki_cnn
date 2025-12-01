@@ -5,13 +5,12 @@ import numpy as np
 import pytest
 import torch
 import torch.nn as nn
+from biolm.structured_config import BioLMConfig, DebuggingConfig, TrainingConfig
+from biolm.train_utils import compute_metrics_for_regression, get_trainer
+from biolm.trainer import RegressionTrainer
 from torch.utils.data import Dataset
 from transformers import TrainingArguments
 from transformers.data.data_collator import DefaultDataCollator
-
-from biolm_utils.structured_config import BioLMConfig, DebuggingConfig, TrainingConfig
-from biolm_utils.train_utils import compute_metrics_for_regression, get_trainer
-from biolm_utils.trainer import RegressionTrainer
 
 
 class DummyDataset(Dataset):

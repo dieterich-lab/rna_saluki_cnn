@@ -17,32 +17,24 @@ def get_saluki_config():
     Returns:
         PluginConfig: The complete plugin configuration.
     """
-    from biolm_utils.plugin_config import PluginConfig, PluginManager
+    from biolm.plugin_config import PluginConfig, PluginManager
     from transformers import DefaultDataCollator, PreTrainedTokenizerFast
 
     # Create the plugin configuration
     # Modify these settings for your custom plugin
     config = PluginConfig(
-        # Model classes - set your model classes here
-        model_cls_for_pretraining=None,  # Set if you have pretraining
-        model_cls_for_finetuning=SalukiModel,  # Your main model class
-        # Dataset class - your dataset implementation
+        model_cls_for_pretraining=None,
+        model_cls_for_finetuning=SalukiModel,
         dataset_cls=RNACNNDataset,
-        # Tokenizer - usually PreTrainedTokenizerFast
         tokenizer_cls=PreTrainedTokenizerFast,
-        # Data collators - customize for your data preprocessing needs
-        datacollator_cls_for_pretraining=None,  # For pretraining (if any)
-        datacollator_cls_for_finetuning=DefaultDataCollator,  # For finetuning
-        # Tokenizer settings
+        datacollator_cls_for_pretraining=None,
+        datacollator_cls_for_finetuning=DefaultDataCollator,
         add_special_tokens=False,
-        # Model config class (optional)
         config_cls=None,
-        # Training settings
         pretraining_required=False,
-        learning_rate=1e-4,
-        max_grad_norm=1.0,
-        weight_decay=0.0,
-        # Special tokenizer (optional)
+        learning_rate=0.001,
+        max_grad_norm=0.4,
+        weight_decay=0.001,
         special_tokenizer_for_trainer_cls=None,
     )
 

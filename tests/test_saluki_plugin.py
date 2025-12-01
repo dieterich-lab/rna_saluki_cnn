@@ -1,49 +1,23 @@
-"""Tests ensuring the Saluki plugin is a thin wrapper delegating to biolm_utils."""
+"""Tests ensuring the Saluki plugin can be loaded via entry points."""
 
-from biolm_utils.config import get_config
-from biolm_utils.plugin_registry import (
-    apply_plugin,
-    get_current_plugin,
-    get_plugin_factory,
-)
+import importlib.metadata
 
 
-def test_saluki_plugin_registered():
-    # Import or reload the module so its registration logic runs in this
-    # test process (some tests may import/unregister the plugin earlier).
-    # Import the canonical packaged plugin factory (no wrapper).
-    import importlib
-
-    # Import the canonical packaged plugin implementation and register its factory
-    # with the framework's registry for tests.
-    from saluki_plugin import config as saluki_pkg
-
-    if get_plugin_factory("saluki") is None:
-        # register the package factory into the framework registry
-        from biolm_utils.plugin_registry import register_plugin
-
-        register_plugin("saluki", saluki_pkg.get_saluki_config)
-
-    factory = get_plugin_factory("saluki")
-    assert factory is not None, "saluki plugin factory should be registered"
+def test_saluki_plugin_entry_point_exists():
+    """Test that the saluki plugin entry point is registered."""
+    eps = importlib.metadata.entry_points(group="biolm.plugins")
+    plugin_names = [ep.name for ep in eps]
+    assert "saluki" in plugin_names, f"saluki not in {plugin_names}"
 
 
-def test_saluki_apply_sets_config():
-    # Ensure applying the plugin activates the plugin config inside the framework
-    import importlib
-
-    # Register packaged factory into the framework registry for this test run
-    from saluki_plugin import config as saluki_pkg
-
-    if get_plugin_factory("saluki") is None:
-        from biolm_utils.plugin_registry import register_plugin
-
-        register_plugin("saluki", saluki_pkg.get_saluki_config)
-
-    apply_plugin("saluki")
-    cfg = get_config()
-    assert cfg is not None
-    # Expect the active plugin to be 'saluki'
-    assert get_current_plugin() == "saluki"
-    # The dataset class should be present in the active config
-    assert hasattr(cfg, "DATASET_CLS") or hasattr(cfg, "dataset_cls")
+def test_saluki_plugin_can_load():
+    """Test that the saluki plugin can be loaded."""
+    eps = importlib.metadata.entry_points(group="biolm.plugins")
+    for ep in eps:
+        if ep.name == "saluki":
+            plugin_func = ep.load()
+            # Call the function to load the plugin
+            plugin_func()
+            break
+    else:
+        raise AssertionError("saluki entry point not found")

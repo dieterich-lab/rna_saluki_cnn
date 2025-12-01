@@ -1,7 +1,7 @@
 # This test module avoids requiring pytest at import time so the helper checks
 # can be executed directly in environments that do not have pytest installed.
 
-from biolm_utils.dataset_utils import check_batchsize, make_subsets, split_indices
+from biolm.dataset_utils import check_batchsize, make_subsets, split_indices
 
 
 def test_split_indices_two_way():

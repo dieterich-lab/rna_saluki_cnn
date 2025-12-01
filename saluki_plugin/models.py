@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import torch.nn as nn
-from biolm_utils.base_model import BaseModel
+from biolm.base_dataset import BaseModel
 
 # Saluki model constants
 SALUKI_BLOCKSIZE = 12288
@@ -158,6 +158,9 @@ class HFSaluki(BaseModel):
 
     @staticmethod
     def get_config(args, config_cls, tokenizer, dataset, nlabels):
+        from transformers import PretrainedConfig
+
+        # Saluki invariants
         blocksize = getattr(args, "blocksize", None)
         if blocksize is None:
             training = getattr(args, "training", None)
@@ -169,11 +172,27 @@ class HFSaluki(BaseModel):
                 f"Saluki requires blocksize={SALUKI_BLOCKSIZE}; do not set a different blocksize in global config."
             )
 
-        config = config_cls(
-            vocab_size=len(tokenizer),
-            max_position_embeddings=SALUKI_BLOCKSIZE,
-            pad_token_id=tokenizer.pad_token_id,
-        )
+        # Check encoding
+        tokenization = getattr(args, "tokenization", None)
+        if tokenization and getattr(tokenization, "encoding", None) != "atomic":
+            raise ValueError(
+                f"Saluki requires encoding='atomic', but got '{getattr(tokenization, 'encoding', None)}'. "
+                "Saluki requires atomic encoding."
+            )
+
+        if config_cls is not None:
+            config = config_cls(
+                vocab_size=len(tokenizer),
+                max_position_embeddings=SALUKI_BLOCKSIZE,
+                pad_token_id=tokenizer.pad_token_id,
+            )
+        else:
+            # For custom models not using HF config, use PretrainedConfig
+            config = PretrainedConfig(
+                vocab_size=len(tokenizer),
+                max_position_embeddings=SALUKI_BLOCKSIZE,
+                pad_token_id=tokenizer.pad_token_id,
+            )
         cat0 = dataset.OHE.categories_[0]
         try:
             cat_size = cat0.size

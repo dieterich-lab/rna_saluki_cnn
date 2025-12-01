@@ -1,8 +1,8 @@
 import tempfile
 from pathlib import Path
 
-from biolm_utils.mlflow_integration import start_mlflow_run
-from biolm_utils.structured_config import BioLMConfig, SettingsConfig
+from biolm.mlflow_integration import start_mlflow_run
+from biolm.structured_config import BioLMConfig, SettingsConfig
 
 
 def test_mlflow_smoke(tmp_path):

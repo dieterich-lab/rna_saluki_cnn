@@ -4,8 +4,7 @@ import random
 import numpy as np
 import pytest
 import torch
-
-from biolm_utils.biolm import set_seed
+from biolm.biolm import set_seed
 
 
 class TestBiolm:

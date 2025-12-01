@@ -1,8 +1,7 @@
 import pytest
-
-from biolm_utils.cross_validation import CrossValidator
-from biolm_utils.paths import Paths
-from biolm_utils.structured_config import (
+from biolm.cross_validation import CrossValidator
+from biolm.paths import Paths
+from biolm.structured_config import (
     BioLMConfig,
     DataSourceConfig,
     DebuggingConfig,
@@ -87,7 +86,7 @@ def test_crossval_predict(tmp_path):
 
 def test_compat_parametrized_decorator(tmp_path):
     # Validate that the legacy decorator wrapper path still functions.
-    from biolm_utils.cross_validation import parametrized_decorator
+    from biolm.cross_validation import parametrized_decorator
 
     params = BioLMConfig(
         mode="predict",
