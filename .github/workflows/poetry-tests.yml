@@ -2,9 +2,9 @@ name: poetry-tests
 
 on:
   push:
-    branches: [ main, refactor-config-management ]
+    branches: [ main, saluki-2.0 ]
   pull_request:
-    branches: [ main, refactor-config-management ]
+    branches: [ main, saluki-2.0 ]
 
 jobs:
   tests:

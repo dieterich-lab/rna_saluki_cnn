@@ -2,11 +2,12 @@ name: unit-tests-fast
 
 on:
   pull_request:
-    branches: [ main, refactor-config-management ]
+    branches: [ main, saluki-2.0 ]
   push:
     paths:
-      - 'biolm_utils/**'
-    branches: [ main, refactor-config-management ]
+      - 'saluki_plugin/**'
+      - 'tests/**'
+    branches: [ main, saluki-2.0 ]
 
 jobs:
   unit-tests:

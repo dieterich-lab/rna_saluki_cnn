@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, refactor-config-management ]
+    branches: [ main, saluki-2.0 ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, saluki-2.0 ]
 
 jobs:
   test:

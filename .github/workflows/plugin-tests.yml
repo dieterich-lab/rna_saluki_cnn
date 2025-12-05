@@ -2,9 +2,9 @@ name: "Plugin tests (saluki)"
 
 on:
   push:
-    branches: [ refactor-config-management, main ]
+    branches: [ saluki-2.0, main ]
   pull_request:
-    branches: [ refactor-config-management, main ]
+    branches: [ saluki-2.0, main ]
 
 jobs:
   test:

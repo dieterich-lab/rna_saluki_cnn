@@ -2,9 +2,9 @@ name: unit-tests-full
 
 on:
   pull_request:
-    branches: [ main, refactor-config-management ]
+    branches: [ main, saluki-2.0 ]
   push:
-    branches: [ main, refactor-config-management ]
+    branches: [ main, saluki-2.0 ]
 
 jobs:
   tests-matrix:

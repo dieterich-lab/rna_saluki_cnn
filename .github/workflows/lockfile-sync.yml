@@ -2,9 +2,9 @@ name: lockfile-sync
 
 on:
   pull_request:
-    branches: [ main, refactor-config-management ]
+    branches: [ main, saluki-2.0 ]
   push:
-    branches: [ main, refactor-config-management ]
+    branches: [ main, saluki-2.0 ]
 
 jobs:
   poetry-lock-sync:

@@ -150,7 +150,17 @@ class Saluki(nn.Module):
 class HFSaluki(BaseModel):
     def __init__(self, config):
         super().__init__(config)
-        self.model = Saluki(input_size=config.input_size, num_labels=config.num_labels)
+        # Accept optional architecture parameters from config (useful for testing with small sequences)
+        self.model = Saluki(
+            input_size=config.input_size,
+            num_labels=config.num_labels,
+            channels=getattr(config, 'hidden_size', 64),
+            kernel_width=getattr(config, 'conv_kernel_size', 5),
+            maxpool_width=getattr(config, 'pool_size', 2),
+            maxpool_stride=getattr(config, 'pool_size', 2),
+            layers=getattr(config, 'num_layers', 6),
+            dropout=getattr(config, 'dropout', 0.3),
+        )
 
     def forward(self, input_ids, **kwargs):
         x = self.model(input_ids)
@@ -161,11 +171,14 @@ class HFSaluki(BaseModel):
         from transformers import PretrainedConfig
 
         # Saluki invariants
-        blocksize = getattr(args, "blocksize", None)
+        # Access blocksize from training config
+        blocksize = (
+            getattr(args.training, "blocksize", None)
+            if hasattr(args, "training")
+            else None
+        )
         if blocksize is None:
-            training = getattr(args, "training", None)
-            if training is not None:
-                blocksize = getattr(training, "blocksize", None)
+            blocksize = getattr(args, "blocksize", None)
 
         if blocksize not in (None, SALUKI_BLOCKSIZE):
             raise ValueError(
