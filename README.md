@@ -36,25 +36,33 @@ CNN-based RNA regulatory prediction plugin for the BioLM framework. Part of the 
 # Clone and install framework
 git clone https://github.com/dieterich-lab/biolm_utils.git
 cd biolm_utils
-poetry install
+git checkout biolm-2.0
+./install.sh
 ```
 
 ### 2. Install Saluki Plugin
 
 ```bash
-# Clone Saluki plugin (side by side with framework)
+# Clone Saluki plugin
 cd ..
 git clone https://github.com/dieterich-lab/rna_saluki_cnn.git
 cd rna_saluki_cnn
+git checkout saluki-2.0
 
-# Install plugin in development mode
-poetry install
+# Run plugin installation script
+./install.sh
 ```
+
+The plugin automatically:
+- Finds the framework
+- Installs itself into the framework's environment
+- Registers via entry points
+- Verifies successful registration
 
 ### 3. Verify Installation
 
 ```bash
-# Check plugin is discovered
+# Check registered plugins
 cd ../biolm_utils
 poetry run python -c "
 import importlib.metadata

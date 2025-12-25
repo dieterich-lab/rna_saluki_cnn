@@ -160,7 +160,7 @@ def test_saluki_full_pipeline(tiny_dataset):
             "model.kernel_size=3",
             "model.num_filters=32",
             "debugging.accelerator=cpu",
-            "training.batchsize=1",
+            "training.batchsize=2",
             "data_source.splitratio=[80,20]",
         ]
         result = run_command(finetune_cmd, timeout=900)
@@ -174,15 +174,15 @@ def test_saluki_full_pipeline(tiny_dataset):
 
         # Step 3: Testing
         debug_log("\n>>> STEP 3: TESTING")
-        test_results_file = finetune_dir / "results.json"
+        test_results_file = finetune_dir / "eval_results.json"
         assert test_results_file.exists(), f"Results file not found"
 
         with open(test_results_file) as f:
             results = json.load(f)
 
         debug_log(f"Results: {results}")
-        assert "test_spearmanr" in results, "Spearman correlation not in results"
-        debug_log(f"✓ Test Spearman: {results['test_spearmanr']}")
+        assert "eval_spearman rho" in results, "Spearman correlation not in results"
+        debug_log(f"✓ Test Spearman: {results['eval_spearman rho']}")
 
         debug_log("\n" + "=" * 80)
         debug_log("SALUKI FULL PIPELINE TEST PASSED")
