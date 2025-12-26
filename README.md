@@ -55,8 +55,9 @@ git clone https://github.com/dieterich-lab/rna_saluki_cnn.git
 cd rna_saluki_cnn
 git checkout saluki-2.0
 
-# Run plugin installation script
-./install.sh
+# Activate framework environment and install
+source ../biolm_utils/.venv/bin/activate
+pip install -e .
 ```
 
 The plugin automatically:
