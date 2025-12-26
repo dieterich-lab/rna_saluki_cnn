@@ -55,20 +55,8 @@ The plugin automatically:
 ### 3. Verify Installation
 
 ```bash
-# Check registered plugins
-cd ../biolm_utils
-poetry run python -c "
-import importlib.metadata
-eps = importlib.metadata.entry_points(group='biolm.plugins')
-saluki = next((ep for ep in eps if ep.name == 'saluki'), None)
-if saluki:
-    print('✅ Saluki plugin installed successfully!')
-else:
-    print('❌ Saluki plugin not found')
-"
+biolm list-plugins
 ```
-
-**Expected output:** `✅ Saluki plugin installed successfully!`
 
 ---
 
