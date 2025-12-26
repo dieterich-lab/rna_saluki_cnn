@@ -48,10 +48,29 @@ class RNACNNDataset(RNABaseDataset):
                 else getattr(call_args, "blocksize", None)
             )
         )
-        if blocksize != expected_blocksize:
+        if blocksize is not None and blocksize != expected_blocksize:
             raise ValueError(
                 f"Saluki requires training.blocksize={expected_blocksize}. This is an internal Saluki model property and cannot be changed via global configs."
             )
+
+        # Ensure tokenizer uses the correct blocksize for padding
+        if "tokenizer" in args:
+            # Force the tokenizer to use the correct length
+            args["tokenizer"].model_max_length = SALUKI_BLOCKSIZE
+            # Also update the init_kwargs if present to ensure persistence
+            if hasattr(args["tokenizer"], "init_kwargs"):
+                args["tokenizer"].init_kwargs["model_max_length"] = SALUKI_BLOCKSIZE
+
+        # Also inject it into the config args so any downstream logic sees it
+        if "args" in args:
+            config_args = args["args"]
+            if hasattr(config_args, "training"):
+                if config_args.training is None:
+                    # If training config is missing, create a dummy one (unlikely but safe)
+                    from biolm.structured_config import TrainingConfig
+
+                    config_args.training = TrainingConfig()
+                config_args.training.blocksize = SALUKI_BLOCKSIZE
 
         # initialize base class after invariants pass
         super().__init__(**args)
