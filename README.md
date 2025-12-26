@@ -42,6 +42,12 @@ git checkout biolm-2.0
 
 ### 2. Install Saluki Plugin
 
+**Option A: Using BioLM CLI (Recommended)**
+```bash
+biolm install-plugin https://github.com/dieterich-lab/rna_saluki_cnn.git
+```
+
+**Option B: Manual Installation**
 ```bash
 # Clone Saluki plugin
 cd ..
