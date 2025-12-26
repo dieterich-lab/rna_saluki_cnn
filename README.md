@@ -43,7 +43,7 @@ git checkout biolm-2.0
 ### 2. Install Saluki Plugin
 
 ```bash
-biolm install-plugin https://github.com/dieterich-lab/rna_saluki_cnn.git
+poetry run biolm install-plugin https://github.com/dieterich-lab/rna_saluki_cnn.git
 ```
 
 The plugin automatically:
@@ -55,7 +55,7 @@ The plugin automatically:
 ### 3. Verify Installation
 
 ```bash
-biolm list-plugins
+poetry run biolm list-plugins
 ```
 
 ---
