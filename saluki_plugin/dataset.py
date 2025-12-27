@@ -54,12 +54,17 @@ class RNACNNDataset(RNABaseDataset):
             )
 
         # Ensure tokenizer uses the correct blocksize for padding
-        if "tokenizer" in args:
-            # Force the tokenizer to use the correct length
-            args["tokenizer"].model_max_length = SALUKI_BLOCKSIZE
-            # Also update the init_kwargs if present to ensure persistence
-            if hasattr(args["tokenizer"], "init_kwargs"):
-                args["tokenizer"].init_kwargs["model_max_length"] = SALUKI_BLOCKSIZE
+            # Ensure tokenizer uses the correct blocksize for padding. Accept both
+            # the case where the dataset was called with keyword args (including
+            # a `tokenizer` key) or where the framework passes a tokenizer as a
+            # separate parameter.
+            if "tokenizer" in args:
+                args["tokenizer"].model_max_length = SALUKI_BLOCKSIZE
+                if hasattr(args["tokenizer"], "init_kwargs"):
+                    args["tokenizer"].init_kwargs["model_max_length"] = SALUKI_BLOCKSIZE
+            elif "tokenizer" in locals() and locals()["tokenizer"] is not None:
+                # Called with tokenizer as a parameter
+                tokenizer.model_max_length = SALUKI_BLOCKSIZE
 
         # Also inject it into the config args so any downstream logic sees it
         if "args" in args:
