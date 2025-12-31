@@ -1,3 +1,5 @@
+> **Note:** The `saluki-2.0` branch contains the latest, actively developed version of this plugin. The `main` branch is legacy. For the newest features and code, please [switch to the `saluki-2.0` branch](https://github.com/dieterich-lab/rna_saluki_cnn/tree/saluki-2.0).
+
 # Saluki Plugin for BioLM 2.0
 
 **CNN-based RNA regulatory prediction plugin**
