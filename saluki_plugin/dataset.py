@@ -4,7 +4,7 @@ from typing import Any, List
 
 import numpy as np
 import torch
-from biolm.rna_datasets import RNABaseDataset
+from biolm.biolm_dataset import BioLMDataset
 from sklearn.preprocessing import OneHotEncoder
 from torch.utils.data import Dataset
 
@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 SALUKI_BLOCKSIZE = 12288
 
 
-class RNACNNDataset(RNABaseDataset):
+class RNACNNDataset(BioLMDataset):
     def __init__(self, **args):
         # enforce Saluki invariants early (one-hot encoding + fixed blocksize)
         if (

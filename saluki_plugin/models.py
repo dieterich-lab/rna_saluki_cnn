@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import torch.nn as nn
-from biolm.base_dataset import BaseModel
+from biolm.biolm_model import BioLMModel
 
 # Saluki model constants
 SALUKI_BLOCKSIZE = 12288
@@ -147,7 +147,7 @@ class Saluki(nn.Module):
         return x
 
 
-class HFSaluki(BaseModel):
+class HFSaluki(BioLMModel):
     def __init__(self, config):
         super().__init__(config)
         # Accept optional architecture parameters from config (useful for testing with small sequences)
