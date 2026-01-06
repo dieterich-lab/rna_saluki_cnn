@@ -53,7 +53,7 @@ class RNACNNDataset(BioLMDataset):
                 f"Saluki requires training.blocksize={expected_blocksize}. This is an internal Saluki model property and cannot be changed via global configs."
             )
 
-        # Ensure tokenizer uses the correct blocksize for padding
+            # Ensure tokenizer uses the correct blocksize for padding
             # Ensure tokenizer uses the correct blocksize for padding. Accept both
             # the case where the dataset was called with keyword args (including
             # a `tokenizer` key) or where the framework passes a tokenizer as a
