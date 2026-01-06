@@ -23,3 +23,11 @@ This plugin integrates Saluki, a convolutional neural network, into the BioLM fr
    ```bash
    poetry run biolm install-plugin https://github.com/dieterich-lab/rna_saluki_cnn.git
    ```
+
+## Developer install
+
+When making changes to the Saluki plugin, install it directly from your local checkout so Python uses the editable source:
+
+```bash
+poetry run biolm develop-plugin /path/to/rna_saluki_cnn
+```
