@@ -17,6 +17,7 @@ class MockTokenizer:
         ]
         self.vocab = {"A": 0, "C": 1, "G": 2, "T": 3, "[PAD]": 4}
         self.special_tokens_map = {"pad_token": "[PAD]"}
+        self.pad_token_id = 4
 
     def __call__(self, *args, **kwargs):
         return {"input_ids": [[1, 2, 3, 4]]}

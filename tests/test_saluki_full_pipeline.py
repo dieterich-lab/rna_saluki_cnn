@@ -137,7 +137,7 @@ def test_saluki_full_pipeline(tiny_dataset):
         debug_log("✓ Tokenization completed")
 
         # Verify tokenizer was created
-        tokenizer_file = output_dir / "tokenizer.json"
+        tokenizer_file = output_dir / "tokenize" / "tokenizer.json"
         assert tokenizer_file.exists(), f"Tokenizer not found at {tokenizer_file}"
         debug_log(f"✓ Tokenizer created at {tokenizer_file}")
 

@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 
 # Saluki model constants
 SALUKI_BLOCKSIZE = 12288
+SALUKI_LABELPOS = 2
 
 
 class RNACNNDataset(BioLMDataset):
@@ -23,6 +24,8 @@ class RNACNNDataset(BioLMDataset):
             call_args = args.get("args")
         else:
             call_args = args
+
+        self._ensure_saluki_labelpos(call_args)
 
         encoding = (
             call_args.tokenization.encoding
@@ -53,18 +56,12 @@ class RNACNNDataset(BioLMDataset):
                 f"Saluki requires training.blocksize={expected_blocksize}. This is an internal Saluki model property and cannot be changed via global configs."
             )
 
-            # Ensure tokenizer uses the correct blocksize for padding
-            # Ensure tokenizer uses the correct blocksize for padding. Accept both
-            # the case where the dataset was called with keyword args (including
-            # a `tokenizer` key) or where the framework passes a tokenizer as a
-            # separate parameter.
-            if "tokenizer" in args:
-                args["tokenizer"].model_max_length = SALUKI_BLOCKSIZE
-                if hasattr(args["tokenizer"], "init_kwargs"):
-                    args["tokenizer"].init_kwargs["model_max_length"] = SALUKI_BLOCKSIZE
-            elif "tokenizer" in locals() and locals()["tokenizer"] is not None:
-                # Called with tokenizer as a parameter
-                tokenizer.model_max_length = SALUKI_BLOCKSIZE
+        # Ensure tokenizer uses the correct blocksize for padding
+        tokenizer_instance = args.get("tokenizer")
+        if tokenizer_instance is not None:
+            tokenizer_instance.model_max_length = expected_blocksize
+            if hasattr(tokenizer_instance, "init_kwargs"):
+                tokenizer_instance.init_kwargs["model_max_length"] = expected_blocksize
 
         # Also inject it into the config args so any downstream logic sees it
         if "args" in args:
@@ -87,6 +84,23 @@ class RNACNNDataset(BioLMDataset):
         ]
         self.OHE = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
         self.OHE.fit([[x] for x in non_special_vocab])
+
+    def _ensure_saluki_labelpos(self, config_args: Any) -> None:
+        data_source = getattr(config_args, "data_source", None)
+        if data_source is None and isinstance(config_args, dict):
+            data_source = config_args.setdefault("data_source", {})
+        self._set_labelpos_if_missing(data_source)
+        self._set_labelpos_if_missing(config_args)
+
+    def _set_labelpos_if_missing(self, target: Any) -> None:
+        if target is None:
+            return
+        if hasattr(target, "get") and hasattr(target, "__setitem__"):
+            if target.get("labelpos") is None:
+                target["labelpos"] = SALUKI_LABELPOS
+            return
+        if getattr(target, "labelpos", None) is None:
+            setattr(target, "labelpos", SALUKI_LABELPOS)
 
     def __getitem__(self, i):
         example = self.examples[i].copy()
