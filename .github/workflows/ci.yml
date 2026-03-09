@@ -11,6 +11,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lockfile-sync:
+    name: verify lockfile sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+
+      - name: Verify poetry.lock is in sync with pyproject.toml
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry lock --no-interaction
+
+          if [ -n "$(git status --porcelain --untracked-files=no -- poetry.lock)" ]; then
+            echo "poetry.lock is out-of-sync with pyproject.toml. Run 'poetry lock' and commit poetry.lock." >&2
+            git --no-pager diff --no-color --name-only -- poetry.lock || true
+            exit 1
+          fi
+
   pre-commit:
     runs-on: ubuntu-latest
     steps:
