@@ -5,6 +5,7 @@
 **CNN-based RNA regulatory prediction plugin**
 
 This plugin integrates Saluki, a convolutional neural network, into the BioLM framework for:
+
 - **RNA sequence tokenization**
 - **Supervised learning** (classification/regression)
 - **Feature interpretation**
@@ -12,6 +13,7 @@ This plugin integrates Saluki, a convolutional neural network, into the BioLM fr
 ## Installation
 
 1. Install the BioLM framework:
+
    ```bash
    git clone https://github.com/dieterich-lab/biolm_utils.git
    cd biolm_utils
@@ -19,9 +21,10 @@ This plugin integrates Saluki, a convolutional neural network, into the BioLM fr
    ./install.sh
    ```
 
-2. Install the Saluki plugin:
+2. Install the Saluki plugin from the `saluki-2.0` branch:
+
    ```bash
-   poetry run biolm install-plugin https://github.com/dieterich-lab/rna_saluki_cnn.git
+   poetry run biolm install-plugin "https://github.com/dieterich-lab/rna_saluki_cnn.git?ref=saluki-2.0"
    ```
 
 ## Developer install
