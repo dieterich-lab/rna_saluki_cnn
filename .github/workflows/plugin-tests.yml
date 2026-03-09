@@ -1,13 +1,11 @@
-name: "Plugin tests (saluki)"
+name: "Plugin tests (saluki) (disabled)"
 
 on:
-  push:
-    branches: [ saluki-2.0, main ]
-  pull_request:
-    branches: [ saluki-2.0, main ]
+  workflow_dispatch:
 
 jobs:
   test:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

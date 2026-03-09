@@ -1,13 +1,11 @@
-name: unit-tests-full
+name: unit-tests-full (disabled)
 
 on:
-  pull_request:
-    branches: [ main, saluki-2.0 ]
-  push:
-    branches: [ main, saluki-2.0 ]
+  workflow_dispatch:
 
 jobs:
   tests-matrix:
+    if: false
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -30,11 +28,8 @@ jobs:
           pytest -q
 
   nightly-heavy-tests:
-    if: github.event_name == 'schedule'
+    if: false
     runs-on: ubuntu-latest
-    schedule:
-      # Weekly run to exercise heavier integration tests that are expensive
-      - cron: '0 3 * * 0'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python

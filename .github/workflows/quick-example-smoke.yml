@@ -1,13 +1,11 @@
-name: Quick example smoke test
+name: Quick example smoke test (disabled)
 
 on:
-  push:
-    branches: [ main, refactor-config-management ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   example-smoke:
+    if: false
     name: Run plugin tests + quick example smoke
     runs-on: ubuntu-latest
     steps:

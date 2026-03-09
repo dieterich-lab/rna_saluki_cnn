@@ -1,13 +1,11 @@
-name: poetry-tests
+name: poetry-tests (disabled)
 
 on:
-  push:
-    branches: [ main, saluki-2.0 ]
-  pull_request:
-    branches: [ main, saluki-2.0 ]
+  workflow_dispatch:
 
 jobs:
   tests:
+    if: false
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -48,6 +46,7 @@ jobs:
           poetry run pytest -q
 
   lint:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

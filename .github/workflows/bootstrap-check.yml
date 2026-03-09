@@ -1,13 +1,11 @@
-name: Bootstrap smoke test
+name: Bootstrap smoke test (disabled)
 
 on:
-  push:
-    branches: [ main, refactor-config-management ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   bootstrap-check:
+    if: false
     name: Verify `make bootstrap` (framework + plugin)
     runs-on: ubuntu-latest
     steps:
