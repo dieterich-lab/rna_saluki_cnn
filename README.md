@@ -34,3 +34,14 @@ When making changes to the Saluki plugin, install it directly from your local ch
 ```bash
 poetry run biolm develop-plugin /path/to/rna_saluki_cnn
 ```
+
+## Local commit/push hooks (recommended)
+
+Install local hooks once per clone:
+
+```bash
+poetry run pre-commit install
+poetry run pre-commit install --hook-type pre-push
+```
+
+For hook lifecycle details (`pre-commit` vs `pre-push`) and current stage behavior, see [PLUGIN_CONTRACT.md in biolm_utils](https://github.com/dieterich-lab/biolm_utils/blob/biolm-2.0/docs/PLUGIN_CONTRACT.md#9-local-git-hook-lifecycle-pre-commit-vs-pre-push).
