@@ -20,20 +20,17 @@ Why it matters:
 
 ## 2) [tests/test_saluki_plugin_config.py](tests/test_saluki_plugin_config.py)
 
-Purpose: **plugin contract + configuration correctness**.
+Purpose: **minimal plugin contract checks**.
 
 What it tests:
 
-- Plugin can be loaded from entry points into `PluginManager`.
-- `pretraining_required == False` (Saluki is CNN-only, no pretrain stage).
-- `model_cls_for_pretraining is None`.
-- Required attributes exist (`model_cls_for_finetuning`, `dataset_cls`, tokenizer/data collator fields).
-- Finetuning model class is callable.
+- Required runtime classes are present (`model_cls_for_finetuning`, `dataset_cls`).
+- Saluki pretraining semantics are correct (`pretraining_required is False`, `model_cls_for_pretraining is None`).
 
 Why it matters:
 
 - Ensures Saluki obeys BioLM plugin contract semantics.
-- Prevents regressions where config fields are renamed/removed.
+- Prevents regressions in the most critical plugin behavior while keeping tests lean.
 
 ---
 
@@ -73,7 +70,7 @@ Why it matters:
 ## Practical notes
 
 - The full pipeline test is intentionally heavier and can take a few minutes.
-- If entry-point tests fail first, check plugin installation and environment activation before debugging model code.
+- If entry-point tests fail first, check plugin installation and active Poetry environment before debugging model code.
 - Recommended triage order:
   1. `test_saluki_plugin.py`
   2. `test_saluki_plugin_config.py`
