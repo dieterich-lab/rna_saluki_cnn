@@ -94,7 +94,11 @@ jobs:
           poetry run pip install -e ./biolm_utils
           poetry run pip install -e .
 
-      - name: Run plugin smoke tests
+      - name: Run saluki test suite
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          poetry run pytest -q tests/test_saluki_plugin.py tests/test_saluki_plugin_config.py
+          poetry run pytest -q \
+            tests/test_saluki_plugin.py \
+            tests/test_saluki_plugin_config.py \
+            tests/test_saluki_invariants.py \
+            tests/test_saluki_full_pipeline.py
