@@ -11,6 +11,7 @@ Note: Saluki does not support pre-training (CNN architecture, not transformer).
 
 import json
 import logging
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -18,6 +19,23 @@ from pathlib import Path
 import pytest
 
 logging.basicConfig(level=logging.DEBUG)
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def resolve_biolm_workdir():
+    """Resolve BioLM repo path across local and CI layouts."""
+    env_path = os.environ.get("BIOLM_UTILS_PATH")
+    candidates = [
+        Path(env_path) if env_path else None,
+        REPO_ROOT / "biolm_utils",  # GitHub Actions checkout path
+        REPO_ROOT.parent / "biolm_utils",  # local multi-repo workspace path
+        REPO_ROOT,
+    ]
+    for candidate in candidates:
+        if candidate and candidate.exists():
+            return candidate
+    return REPO_ROOT
 
 
 def debug_log(msg):
@@ -95,11 +113,16 @@ def tiny_dataset():
     return tmpdir
 
 
-def run_command(cmd, cwd="/prj/RNA_NLP/biolm_utils", timeout=600):
+def run_command(cmd, cwd=None, timeout=600):
     """Helper to run command and return result."""
-    debug_log(f"Running: {' '.join(cmd)}")
+    effective_cwd = Path(cwd) if cwd else resolve_biolm_workdir()
+    debug_log(f"Running (cwd={effective_cwd}): {' '.join(cmd)}")
     result = subprocess.run(
-        cmd, capture_output=True, text=True, cwd=cwd, timeout=timeout
+        cmd,
+        capture_output=True,
+        text=True,
+        cwd=str(effective_cwd),
+        timeout=timeout,
     )
     if result.returncode != 0:
         debug_log(f"STDOUT:\n{result.stdout}")
