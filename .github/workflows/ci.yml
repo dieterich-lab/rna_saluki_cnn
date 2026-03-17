@@ -88,6 +88,11 @@ jobs:
           ref: biolm-2.0
           path: biolm_utils
 
+      - name: Provide legacy BioLM absolute path for Hydra
+        run: |
+          sudo mkdir -p /prj/RNA_NLP
+          sudo ln -sfn "$GITHUB_WORKSPACE/biolm_utils" /prj/RNA_NLP/biolm_utils
+
       - name: Install BioLM framework and plugin editable
         run: |
           export PATH="$HOME/.local/bin:$PATH"
