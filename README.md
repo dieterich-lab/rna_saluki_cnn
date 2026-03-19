@@ -37,7 +37,7 @@ poetry run biolm develop-plugin /path/to/rna_saluki_cnn
 
 ## Usage
 
-After installation, Saluki integrates seamlessly with the BioLM framework. Since Saluki is a CNN-based model, it **does not require pre-training** and can be used directly for fine-tuning on labeled data.
+After installation, Saluki integrates seamlessly with the BioLM framework. Since Saluki is a CNN-based model, it **does not require pre-training** but **does require tokenization** (atomic encoding of nucleotides).
 
 ### Quick Start Configuration
 
@@ -61,7 +61,13 @@ training:
 
 ### Training Commands
 
-**Fine-tune on your data:**
+**Tokenize your data (required):**
+
+```bash
+poetry run biolm mode=tokenize plugin=saluki data_source.filepath=/path/to/data.tsv outputpath=/tmp/saluki_run
+```
+
+**Fine-tune on your tokenized data:**
 
 ```bash
 poetry run biolm mode=fine-tune plugin=saluki task=classification data_source.filepath=/path/to/data.tsv outputpath=/tmp/saluki_run

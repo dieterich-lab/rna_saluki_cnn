@@ -15,7 +15,7 @@ def get_saluki_config():
     It creates a PluginConfig, sets it as active, and returns it.
 
     Returns:
-        tuple: (PluginConfig, dict) where dict contains plugin-specific Hydra defaults.
+        PluginConfig: The complete plugin configuration.
     """
     from biolm.plugin_config import PluginConfig, PluginManager
     from transformers import (
@@ -48,17 +48,9 @@ def get_saluki_config():
     # Make this the active configuration in the framework
     PluginManager.set_config(config)
 
-    # Provide plugin-specific Hydra defaults
-    defaults = {
-        "tokenization": {
-            "encoding": "atomic",  # Saluki requires atomic encoding
-        },
-        "training": {
-            "blocksize": 12288,  # Saluki's fixed block size
-        },
-    }
-
-    return config, defaults
+    # Note: Saluki invariants (atomic encoding, blocksize=12288) are enforced
+    # in the dataset class and should not be exposed as user-configurable defaults
+    return config
 
 
 __all__ = ["get_saluki_config"]
