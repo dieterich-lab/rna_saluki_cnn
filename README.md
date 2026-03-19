@@ -35,13 +35,71 @@ When making changes to the Saluki plugin, install it directly from your local ch
 poetry run biolm develop-plugin /path/to/rna_saluki_cnn
 ```
 
-## Local commit/push hooks (recommended)
+## Usage
 
-Install local hooks once per clone:
+After installation, Saluki integrates seamlessly with the BioLM framework. Since Saluki is a CNN-based model, it **does not require pre-training** and can be used directly for fine-tuning on labeled data.
 
-```bash
-poetry run pre-commit install
-poetry run pre-commit install --hook-type pre-push
+### Quick Start Configuration
+
+Create a configuration file (e.g., `config.yaml`) for your experiment:
+
+```yaml
+plugin: saluki
+outputpath: /tmp/saluki_experiment
+task: classification  # or 'regression'
+data_source:
+  filepath: /path/to/your/data.tsv
+  columnsep: "\t"
+  idpos: 1
+  seqpos: 2
+  labelpos: 3
+  splitratio: [80, 10, 10]
+training:
+  nepochs: 10
+  batchsize: 8
 ```
 
-For hook lifecycle details (`pre-commit` vs `pre-push`) and current stage behavior, see [PLUGIN_CONTRACT.md in biolm_utils](https://github.com/dieterich-lab/biolm_utils/blob/biolm-2.0/docs/PLUGIN_CONTRACT.md#9-local-git-hook-lifecycle-pre-commit-vs-pre-push).
+### Training Commands
+
+**Fine-tune on your data:**
+
+```bash
+poetry run biolm mode=fine-tune plugin=saluki task=classification data_source.filepath=/path/to/data.tsv outputpath=/tmp/saluki_run
+```
+
+**Make predictions:**
+
+```bash
+poetry run biolm mode=predict plugin=saluki task=classification data_source.filepath=/path/to/test_data.tsv inference.pretrainedmodel=/path/to/model.safetensors outputpath=/tmp/saluki_run
+```
+
+**Interpret features:**
+
+```bash
+poetry run biolm mode=interpret plugin=saluki task=classification data_source.filepath=/path/to/data.tsv inference.pretrainedmodel=/path/to/model.safetensors outputpath=/tmp/saluki_run
+```
+
+### Data Format
+
+Saluki expects tab-separated data with columns for ID, label, and sequence:
+
+```tsv
+ID	Label	Sequence
+seq_001	1.5	AUGCUAGCUAGC
+seq_002	2.3	AUGGCUAUGGCU
+```
+
+- `idpos`: Column index (1-based) for sequence IDs
+- `seqpos`: Column index for RNA sequences
+- `labelpos`: Column index for labels (numeric for regression, 0/1 for classification)
+
+### Configuration Options
+
+Key configuration parameters for Saluki:
+
+- **Task**: `classification` or `regression`
+- **Training**: `nepochs`, `batchsize`, `learning_rate` (default: 0.001)
+- **Data**: `splitratio` for train/validation/test splits
+- **Interpretation**: `inference.looscores.handletokens` (`mask` or `remove`)
+
+For complete configuration options, see the [BioLM configuration documentation](https://github.com/dieterich-lab/biolm_utils/blob/biolm-2.0/README.md#configuration-management).
