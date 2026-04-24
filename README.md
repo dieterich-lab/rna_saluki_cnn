@@ -109,3 +109,39 @@ Key configuration parameters for Saluki:
 - **Interpretation**: `inference.looscores.handletokens` (`mask` or `remove`)
 
 For complete configuration options, see the [BioLM configuration documentation](https://github.com/dieterich-lab/biolm_utils/blob/biolm-2.0/README.md#configuration-management).
+
+## Preprocessing Pipeline
+
+The `tools/preprocessing_pipeline.py` script is a single-command utility designed to extract and enrich transcripts and save them in a TXT file which can directly be used as an input to the Saluki model. It uses `gffread` to extract sequences based on a reference genome and a GTF annotation file, and then processes the transcripts to add biological markers (like Exon Junctions and CDS boundaries). Optionally, it can also merge the final data with additional metadata from a CSV using a YAML configuration file.
+
+### Usage
+
+```bash
+python tools/preprocessing_pipeline.py genome_fasta annotation_gtf output_dir [options]
+```
+
+### Positional Arguments
+* **`genome_fasta`**: Path to the toplevel reference genome FASTA file (e.g., `Homo_sapiens.GRCh38.dna.toplevel.fa` found at https://ftp.ensembl.org/pub/release-115/fasta/homo_sapiens/dna/).
+* **`annotation_gtf`**: Path to the corresponding gene annotation GTF file (e.g., `Homo_sapiens.GRCh38.115.gtf` found at https://ftp.ensembl.org/pub/release-115/gtf/homo_sapiens/).
+* **`output_dir`**: Directory where all intermediate and final output files (SQLite DB, extracted FASTA, and final TXT) will be stored.
+
+### Optional Arguments
+* **`--create_db`**: Flag to force the creation of a new GTF SQLite database. If omitted, the script will use the existing DB if it is already available in the output directory.
+* **`--output_txt`**: Name of the final enriched transcripts output file. (Default: `enriched_transcripts.txt`)
+* **`--ej_markers`**: Whether to add exon junction markers (`ej` or `EJ`) into the sequence. Accepts standard booleans or strings like 'true', '1', 'yes'. (Default: `True`)
+* **`--cds_markers`**: Whether to mark CDS sequences. If enabled, the starting bases of codons are marked with uppercase letters, while UTRs and non-starting bases are lowercase. (Default: `True`)
+* **`--merge_yaml`**: Path to a YAML configuration file to merge additional columns from an external CSV into the final text output. The YAML file must contain: `csv_path`, `columns_to_append`, `txt_id_col` (1-based index), and `csv_id_col` (1-based index).
+
+  **Example `merge_config.yaml`:**
+  ```yaml
+  csv_path: "/path/to/data/half_life.csv"
+  columns_to_append: ["half_life", "rate", "rate.min", "rate.max"] # Column names (or 1-based indices) to extract
+  txt_id_col: 1  # 1-based index of the column containing the join ID in the generated TXT
+  csv_id_col: 1  # 1-based index of the column containing the join ID in the target CSV
+  ```
+
+## Output Files
+Running the script generates the following files in the specified `output_dir`:
+1. **SQLite Database** (`<gtf_basename>.db`): Used for fast querying of exons, CDS, and stop codon features.
+2. **Extracted FASTA** (`extracted_transcripts.fa`): The raw sequence file generated automatically by invoking `gffread`.
+3. **Enriched Transcripts** (`enriched_transcripts.txt`): The final tab-separated dataset containing transcript context (Transcript ID, Gene ID, HGNC Symbol, Biotype) and the stringently formatted marker sequences.
