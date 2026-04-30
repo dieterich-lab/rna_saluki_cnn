@@ -1,4 +1,4 @@
-> **Note:** The `saluki-2.0` branch contains the latest, actively developed version of this plugin. The `main` branch is legacy. For the newest features and code, please [switch to the `saluki-2.0` branch](https://github.com/dieterich-lab/rna_saluki_cnn/tree/saluki-2.0).
+> **Note:** The `main` branch contains the latest, actively developed version of this plugin.
 
 # Saluki Plugin for BioLM 2.0
 
@@ -17,14 +17,14 @@ This plugin integrates Saluki, a convolutional neural network, into the BioLM fr
    ```bash
    git clone https://github.com/dieterich-lab/biolm_utils.git
    cd biolm_utils
-   git checkout biolm-2.0
+  git checkout main
    ./install.sh
    ```
 
-2. Install the Saluki plugin from the `saluki-2.0` branch:
+2. Install the Saluki plugin from `main`:
 
    ```bash
-   poetry run biolm install-plugin "https://github.com/dieterich-lab/rna_saluki_cnn.git?ref=saluki-2.0"
+  poetry run biolm install-plugin "https://github.com/dieterich-lab/rna_saluki_cnn.git?ref=main"
    ```
 
 ## Developer install
@@ -108,7 +108,7 @@ Key configuration parameters for Saluki:
 - **Data**: `splitratio` for train/validation/test splits
 - **Interpretation**: `inference.looscores.handletokens` (`mask` or `remove`)
 
-For complete configuration options, see the [BioLM configuration documentation](https://github.com/dieterich-lab/biolm_utils/blob/biolm-2.0/README.md#configuration-management).
+For complete configuration options, see the [BioLM configuration documentation](https://github.com/dieterich-lab/biolm_utils/blob/main/README.md#configuration-management).
 
 ## Preprocessing Pipeline
 
