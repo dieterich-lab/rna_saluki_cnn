@@ -15,6 +15,15 @@ mlflow = "^3.6.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0"
 
+[tool.poetry.group.preprocessing]
+optional = true
+
+[tool.poetry.group.preprocessing.dependencies]
+gffutils = "*"
+biopython = "*"
+pandas = "*"
+pyyaml = "*"
+
 
 [tool.poetry.plugins."biolm.plugins"]
 saluki = "saluki_plugin.config:get_saluki_config"

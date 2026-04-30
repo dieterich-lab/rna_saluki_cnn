@@ -114,6 +114,21 @@ For complete configuration options, see the [BioLM configuration documentation](
 
 The `tools/preprocessing_pipeline.py` script is a single-command utility designed to extract and enrich transcripts and save them in a TXT file which can directly be used as an input to the Saluki model. It uses `gffread` to extract sequences based on a reference genome and a GTF annotation file, and then processes the transcripts to add biological markers (like Exon Junctions and CDS boundaries). Optionally, it can also merge the final data with additional metadata from a CSV using a YAML configuration file.
 
+### Optional dependencies
+
+The preprocessing script uses additional Python libraries that are not required for normal Saluki training/inference. Install them only when you need this tool:
+
+```bash
+poetry install --with preprocessing
+```
+
+In addition, `gffread` is an external binary (not a Python package). Install it separately, for example via Bioconda:
+
+```bash
+conda create -n bio-tools -c bioconda gffread
+conda activate bio-tools
+```
+
 ### Usage
 
 ```bash
