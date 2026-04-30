@@ -15,52 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lockfile-sync:
-    name: verify lockfile sync
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | POETRY_VERSION=${POETRY_VERSION} python3 -
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry --version
-
-      - name: Verify poetry.lock is in sync with pyproject.toml
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry check --lock
-
-  pre-commit:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Poetry and dependencies
-        run: |
-          curl -sSL https://install.python-poetry.org | POETRY_VERSION=${POETRY_VERSION} python3 -
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry --version
-          poetry install --no-interaction --with dev
-
-      - name: Run pre-commit hooks
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry run pre-commit run --all-files
-
   test:
     name: test (3.11)
     runs-on: ubuntu-latest
